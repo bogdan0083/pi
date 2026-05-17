@@ -1,0 +1,95 @@
+#!/usr/bin/env node
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
+
+const toolName = 'pi-task-reqs-verifier';
+const agentName = 'task-reqs-verifier';
+
+const home = process.env.HOME;
+if (!home) {
+  console.error(`${toolName}: HOME is not set`);
+  process.exit(1);
+}
+
+const agentFile = join(home, '.pi', 'agent', 'agents', `${agentName}.md`);
+if (!existsSync(agentFile)) {
+  console.error(`${toolName}: agent file not found: ${agentFile}`);
+  process.exit(1);
+}
+
+function parseAgentMarkdown(path) {
+  const raw = readFileSync(path, 'utf8');
+  const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
+  if (!match) return { meta: {}, body: raw };
+
+  const meta = {};
+  for (const line of match[1].split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const colon = trimmed.indexOf(':');
+    if (colon === -1) continue;
+    const key = trimmed.slice(0, colon).trim();
+    let value = trimmed.slice(colon + 1).trim();
+    value = value.replace(/^['"]|['"]$/g, '');
+    meta[key] = value;
+  }
+
+  return { meta, body: match[2].trimStart() };
+}
+
+function readStdinIfPiped() {
+  if (process.stdin.isTTY) return '';
+  try {
+    return readFileSync(0, 'utf8').trim();
+  } catch {
+    return '';
+  }
+}
+
+const { meta, body } = parseAgentMarkdown(agentFile);
+const systemPrompt = body.trimStart();
+const prompt = process.argv.slice(2).join(' ') || readStdinIfPiped();
+
+if (!prompt) {
+  console.error(`Usage: ${toolName} "your verification prompt"`);
+  console.error(`   or: printf %s "your verification prompt" | ${toolName}`);
+  process.exit(2);
+}
+
+const tempDir = mkdtempSync(join(tmpdir(), `${toolName}-`));
+const promptFile = join(tempDir, 'system-prompt.md');
+writeFileSync(promptFile, systemPrompt, 'utf8');
+
+const piArgs = [
+  '--print',
+  '--no-session',
+  '--system-prompt', promptFile,
+  // Suppress ~/.pi/agent/APPEND_SYSTEM.md so the canonical verifier prompt stays isolated.
+  // Project AGENTS.md/CLAUDE.md and skills are still loaded by default.
+  '--append-system-prompt', '',
+];
+
+if (meta.model) piArgs.push('--model', meta.model);
+if (meta.thinking) piArgs.push('--thinking', meta.thinking);
+if (meta.tools) piArgs.push('--tools', meta.tools);
+
+const result = spawnSync('pi', piArgs, {
+  input: prompt,
+  stdio: ['pipe', 'inherit', 'inherit'],
+  env: process.env,
+});
+
+try {
+  rmSync(tempDir, { recursive: true, force: true });
+} catch {
+  // Ignore cleanup errors.
+}
+
+if (result.error) {
+  console.error(`${toolName}: failed to run pi: ${result.error.message}`);
+  process.exit(1);
+}
+
+process.exit(result.status ?? 1);

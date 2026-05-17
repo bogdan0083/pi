@@ -1,0 +1,18 @@
+{
+  "lastChangelogVersion": "0.74.0",
+  "defaultProvider": "openai-codex",
+  "defaultModel": "gpt-5.5",
+  "defaultThinkingLevel": "xhigh",
+  "packages": [
+    "npm:pi-subagents",
+    "extensions/enable-ls.ts",
+    "extensions/enable-grep.ts",
+    "extensions/codebuff-provider.ts",
+    "npm:pi-cursor-agent",
+    "npm:pi-claude-cli"
+  ],
+  "subagents": {
+    "disableBuiltins": true
+  },
+  "hideThinkingBlock": false
+}

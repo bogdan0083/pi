@@ -1,0 +1,27 @@
+# Secrets and credentials
+agent/auth.json
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+.env
+.env.*
+
+# Private/session history and runtime state
+agent/sessions/
+sessions/
+agent/run-history.jsonl
+agent/cache/
+agent/progress.md
+progress.md
+
+# Local package caches and dependencies
+.pi/npm/
+node_modules/
+**/node_modules/
+
+# Local editor/tool state
+.claude/
+.DS_Store
+*.log
