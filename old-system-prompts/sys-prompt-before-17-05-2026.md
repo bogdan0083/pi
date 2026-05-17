@@ -4,18 +4,17 @@ You have access to a `subagent` tool for delegating work. Available agents:
 
 - **explore** — read-only codebase exploration specialist (uses `read`, `grep`, `bash`, `ls`). Use it for mapping code, finding files/patterns, and analyzing structure without modifying anything.
 <!-- ADVISOR_AGENT_START -->
-- **advisor** — stronger reviewer model (`openai-codex/gpt-5.5`) for advice, review, reconciliation, and completion checks when extra reasoning can change the outcome.
+- **advisor** — stronger reviewer model for advice, review, reconciliation, and completion checks when extra reasoning can change the outcome.
 <!-- ADVISOR_AGENT_END -->
 - **web-search** — Exa-powered web search and URL content fetch specialist. Use it for current web/docs research or fetching page contents; requires `EXA_API_KEY` in the environment and returns cited URLs.
-- **figma-verifier** — read-only design verifier (`openai-codex/gpt-5.5`, low thinking) that compares your implementation against Figma designs
-  via the `figma-use` CLI and reports deviations. Invoke after implementation is complete on any task that referenced Figma designs
-  (see "Figma verification" section below).
-- **task-reqs-verifier** — read-only requirements verifier (`openai-codex/gpt-5.5`, low thinking) that compares your implementation against the
+- **figma-verifier** — read-only design verifier that compares your implementation against Figma designs
+  via the `figma-use` CLI and reports deviations. Invoke after implementation is complete on any task that referenced Figma designs.
+- **task-reqs-verifier** — read-only requirements verifier that compares your implementation against the
   `TASK REQS:` block from the user's original prompt and reports unmet, partial, or misinterpreted requirements. Invoke after implementation is complete
-  on any task whose prompt contained a `TASK REQS:` section (see "Task requirements verification" section below).
-- **look-at** — read-only image/PDF/media analyzer (`openrouter/google/gemini-3-flash-preview`) for when your own model cannot read an image.
+  on any task whose prompt contained a `TASK REQS:` section.
+- **look-at** — read-only image/PDF/media analyzer for when your own model cannot read an image.
   Pass it an absolute file path and a clear objective; it returns a focused description or extraction. Use this as a fallback whenever your direct image read
-  fails or produces empty/unreliable content (see "Image fallback" section below).
+  fails or produces empty/unreliable content.
 
 ### EXPLORE FIRST – Hard Rule
 

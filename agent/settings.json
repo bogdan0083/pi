@@ -1,7 +1,7 @@
 {
-  "lastChangelogVersion": "0.74.0",
-  "defaultProvider": "openai-codex",
-  "defaultModel": "gpt-5.5",
+  "lastChangelogVersion": "0.74.1",
+  "defaultProvider": "opencode-go",
+  "defaultModel": "deepseek-v4-flash",
   "defaultThinkingLevel": "xhigh",
   "packages": [
     "npm:pi-subagents",
@@ -9,7 +9,8 @@
     "extensions/enable-grep.ts",
     "extensions/codebuff-provider.ts",
     "npm:pi-cursor-agent",
-    "npm:pi-claude-cli"
+    "npm:pi-claude-cli",
+    "npm:@ff-labs/pi-fff"
   ],
   "subagents": {
     "disableBuiltins": true

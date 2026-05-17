@@ -5,7 +5,7 @@ tools: read, grep, bash, ls
 model: opencode-go/deepseek-v4-flash
 systemPromptMode: replace
 inheritProjectContext: true
-inheritSkills: true
+inheritSkills: false
 defaultProgress: true
 ---
 
