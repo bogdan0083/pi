@@ -5,9 +5,11 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
  *   1. Activate the built-in `grep` tool on session start (it is off by default).
  *   2. Block the built-in `find` tool — `grep` covers filename discovery too.
  *   3. Block bash commands that invoke `find`, shell `grep`/`egrep`/`fgrep`,
- *      `git grep`, `fd`/`fdfind`, `ag`, `ack`, or `xargs <banned>`. `rg` is
- *      allowed only for the documented exception for ignored paths; use `rg`
- *      patterns/flags directly rather than piping to shell `grep`.
+ *      `git grep`, `fd`/`fdfind`, `ag`, `ack`, or `xargs <banned>`. `find`
+ *      and grep variants are allowed when they appear after a pipe (i.e. not
+ *      the first command in a pipeline). `rg` is allowed only for the
+ *      documented exception for ignored paths; use `rg` patterns/flags
+ *      directly rather than piping to shell `grep`.
  *
  * Blocked calls return a reason explaining what to use instead, so the agent
  * can self-correct and switch to the built-in `grep` tool.
@@ -64,18 +66,31 @@ function detectBannedSearchCommand(command: string): string | null {
 
 		if (lastSeparator !== "|") firstPipelineBase = base;
 
+		const isPiped = lastSeparator === "|";
+
 		if (BANNED_BINARIES.has(base)) {
+			if (isPiped && (base === "find" || base === "grep" || base === "egrep" || base === "fgrep")) {
+				continue;
+			}
 			return base;
 		}
 
-		if (base === "git" && tokens[i + 1] === "grep") return "git grep";
+		if (base === "git" && tokens[i + 1] === "grep") {
+			if (isPiped) continue;
+			return "git grep";
+		}
 
 		if (base === "xargs") {
 			for (let j = i + 1; j < tokens.length; j++) {
 				const t = tokens[j];
 				if (t.startsWith("-")) continue;
 				const tb = (t.split("/").pop() ?? t).replace(/^\\/, "");
-				if (BANNED_BINARIES.has(tb)) return `xargs ${tb}`;
+				if (BANNED_BINARIES.has(tb)) {
+					if (isPiped && (tb === "find" || tb === "grep" || tb === "egrep" || tb === "fgrep")) {
+						break;
+					}
+					return `xargs ${tb}`;
+				}
 				break;
 			}
 		}
