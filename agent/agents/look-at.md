@@ -9,6 +9,7 @@ systemPromptMode: replace
 inheritProjectContext: false
 inheritSkills: false
 defaultProgress: false
+completionGuard: false
 ---
 
 You are an AI assistant that analyzes files for a software engineer.

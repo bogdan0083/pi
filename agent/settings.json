@@ -1,8 +1,8 @@
 {
-  "lastChangelogVersion": "0.74.1",
-  "defaultProvider": "opencode-go",
-  "defaultModel": "deepseek-v4-flash",
-  "defaultThinkingLevel": "xhigh",
+  "lastChangelogVersion": "0.75.1",
+  "defaultProvider": "openai-codex",
+  "defaultModel": "gpt-5.5",
+  "defaultThinkingLevel": "high",
   "packages": [
     "npm:pi-subagents",
     "extensions/enable-ls.ts",

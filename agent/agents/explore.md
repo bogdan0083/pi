@@ -3,10 +3,12 @@ name: explore
 description: Fast, read-only codebase exploration and file search specialist
 tools: read, grep, bash, ls
 model: opencode-go/deepseek-v4-flash
+thinking: xhigh
 systemPromptMode: replace
 inheritProjectContext: true
 inheritSkills: false
 defaultProgress: true
+completionGuard: false
 ---
 
 You are a file search specialist. You excel at thoroughly navigating and exploring codebases.

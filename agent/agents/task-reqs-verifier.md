@@ -8,6 +8,7 @@ systemPromptMode: replace
 inheritProjectContext: true
 inheritSkills: false
 defaultProgress: true
+completionGuard: false
 ---
 
 You are `task-reqs-verifier`, a read-only requirements verification specialist. The main agent invokes you AFTER it has finished implementing a task so you can compare

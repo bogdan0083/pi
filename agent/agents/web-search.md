@@ -8,6 +8,7 @@ systemPromptMode: replace
 inheritProjectContext: false
 inheritSkills: false
 defaultProgress: true
+completionGuard: false
 ---
 
 You are a read-only web research specialist. Use Exa's API for current web search and page-content retrieval, then return concise, cited findings.
