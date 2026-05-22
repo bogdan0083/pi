@@ -1,14 +1,14 @@
 {
-  "lastChangelogVersion": "0.75.1",
+  "lastChangelogVersion": "0.75.4",
   "defaultProvider": "openai-codex",
   "defaultModel": "gpt-5.5",
-  "defaultThinkingLevel": "high",
+  "defaultThinkingLevel": "medium",
   "packages": [
     "npm:pi-subagents",
     "extensions/enable-ls.ts",
     "extensions/enable-grep.ts",
     "extensions/codebuff-provider.ts",
-    "npm:pi-cursor-agent",
+    "extensions/kilo-gateway-provider.ts",
     "npm:pi-claude-cli",
     "npm:@ff-labs/pi-fff"
   ],
