@@ -4,7 +4,7 @@ description: >
   Read-only image/PDF/media analyzer powered by Gemini 3 Flash via OpenRouter. Invoke when the main agent's model fails to read an image
   (e.g., tool error, "image not supported", garbled output, or empty/unhelpful description) — pass it the file path and what you want extracted.
 tools: read, bash, ls
-model: openrouter/google/gemini-3-flash-preview
+model: kilo/google/gemini-3.1-flash-lite
 systemPromptMode: replace
 inheritProjectContext: false
 inheritSkills: false

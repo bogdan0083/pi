@@ -2,7 +2,7 @@
 name: web-search
 description: Exa-powered web search and URL content fetch specialist using EXA_API_KEY
 tools: bash
-model: opencode-go/deepseek-v4-flash
+model: deepseek/deepseek-v4-flash
 thinking: high
 systemPromptMode: replace
 inheritProjectContext: false

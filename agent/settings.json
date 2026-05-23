@@ -7,10 +7,12 @@
     "npm:pi-subagents",
     "extensions/enable-ls.ts",
     "extensions/enable-grep.ts",
+    "extensions/model-system-prompt.ts",
     "extensions/codebuff-provider.ts",
     "extensions/kilo-gateway-provider.ts",
     "npm:pi-claude-cli",
-    "npm:@ff-labs/pi-fff"
+    "npm:@ff-labs/pi-fff",
+    "npm:pi-cursor-sdk"
   ],
   "subagents": {
     "disableBuiltins": true
