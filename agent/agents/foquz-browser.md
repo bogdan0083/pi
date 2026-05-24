@@ -2,8 +2,8 @@
 name: foquz-browser
 description: Browser automation agent for foquz using hc-run (Playwright). Navigates foquz pages, handles login, captures API responses, and inspects frontend state.
 tools: read, grep, bash
-thinking: low
-model: openai-codex/gpt-5.5
+model: deepseek/deepseek-v4-flash
+thinking: xhigh
 systemPromptMode: replace
 inheritProjectContext: true
 inheritSkills: false

@@ -2,7 +2,7 @@
 name: figma-describer
 description: Detailed read-only Figma layout describer using figma-use; returns implementation-ready descriptions plus ASCII visual diagrams.
 tools: read, bash, ls
-model: kilo/google/gemini-3.5-flash
+model: openrouter/google/gemini-3.5-flash
 thinking: high
 systemPromptMode: replace
 inheritProjectContext: false

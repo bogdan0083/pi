@@ -2,7 +2,7 @@
 name: explore
 description: Fast, read-only codebase exploration and file search specialist. Parent must prefix task with "Review only. Do not edit files. Return advice/findings only."
 tools: read, grep, bash, ls
-model: opencode-go/deepseek-v4-flash
+model: deepseek/deepseek-v4-flash
 thinking: xhigh
 systemPromptMode: replace
 inheritProjectContext: true
