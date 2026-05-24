@@ -3,7 +3,7 @@ name: figma-verifier
 description: Verifies implemented markup, styles, and layout against Figma designs using the `figma-use` CLI. Invoke after implementation is complete to confirm the result matches the design.
 tools: read, grep, bash, ls
 model: openai-codex/gpt-5.5
-thinking: xhigh
+thinking: medium
 systemPromptMode: replace
 inheritProjectContext: true
 inheritSkills: true
