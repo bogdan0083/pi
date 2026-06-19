@@ -2,15 +2,27 @@ import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-import type {
-	OAuthCredentials,
-	OAuthLoginCallbacks,
+import {
+	streamSimpleOpenAICompletions,
+	type Context,
+	type Model,
+	type OAuthCredentials,
+	type OAuthLoginCallbacks,
+	type SimpleStreamOptions,
 } from "@earendil-works/pi-ai";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 const CODEBUFF_BASE_URL = "https://www.codebuff.com";
 const CODEBUFF_AGENT_ID = "codebuff/base@0.0.16";
+const CODEBUFF_USER_AGENT =
+	"ai-sdk/openai-compatible/0.10.7/codebuff ai-sdk/provider-utils/3.0.20 runtime/node";
 const AUTH_FILE = join(homedir(), ".pi", "agent", "auth.json");
+
+/** OpenRouter provider order mirrored from @codebuff/sdk src/impl/llm.ts */
+const PROVIDER_ORDER: Record<string, string[]> = {
+	"anthropic/claude-sonnet-4.6": ["Google", "Anthropic", "Amazon Bedrock"],
+	"anthropic/claude-opus-4.7": ["Google", "Anthropic"],
+};
 
 interface LoginCodeResponse {
 	loginUrl: string;
@@ -85,6 +97,85 @@ function readCodebuffToken(): string | undefined {
 	}
 }
 
+/** Raw HTTP client for Codebuff billing/session APIs (not the @codebuff/sdk agent harness). */
+class CodebuffRunSession {
+	readonly clientId = crypto.randomUUID();
+	readonly traceSessionId = crypto.randomUUID();
+	private runId: string | undefined;
+	private cachedToken: string | undefined;
+	private startPromise: Promise<string> | undefined;
+
+	get activeRunId(): string | undefined {
+		return this.runId;
+	}
+
+	resolveToken(explicit?: string): string | undefined {
+		if (explicit) return explicit;
+		if (!this.cachedToken) this.cachedToken = readCodebuffToken();
+		return this.cachedToken;
+	}
+
+	prefetchRun(token?: string): void {
+		const authToken = this.resolveToken(token);
+		if (!authToken || this.runId || this.startPromise) return;
+		this.startPromise = startAgentRun(authToken).then((id) => {
+			this.runId = id;
+			return id;
+		});
+	}
+
+	async ensureRunId(token?: string): Promise<string> {
+		const authToken = this.resolveToken(token);
+		if (!authToken) {
+			throw new Error("Codebuff auth token missing — run /login codebuff");
+		}
+		if (this.runId) return this.runId;
+		if (!this.startPromise) {
+			this.startPromise = startAgentRun(authToken).then((id) => {
+				this.runId = id;
+				return id;
+			});
+		}
+		return this.startPromise;
+	}
+
+	async enrichPayload(
+		payload: Record<string, unknown>,
+		modelId: string,
+		token?: string,
+	): Promise<Record<string, unknown>> {
+		const runId = await this.ensureRunId(token);
+		const existingMeta =
+			(payload.codebuff_metadata as Record<string, unknown> | undefined) ?? {};
+		const providerOrder = PROVIDER_ORDER[modelId];
+		return {
+			...payload,
+			codebuff_metadata: {
+				...existingMeta,
+				run_id: runId,
+				client_id: this.clientId,
+				trace_session_id: this.traceSessionId,
+			},
+			provider: {
+				allow_fallbacks: false,
+				data_collection: "deny",
+				...(providerOrder ? { order: providerOrder } : {}),
+			},
+			usage: { include: true },
+		};
+	}
+
+	async finish(token?: string): Promise<void> {
+		if (!this.runId) return;
+		const authToken = this.resolveToken(token);
+		if (!authToken) return;
+		const id = this.runId;
+		this.runId = undefined;
+		this.startPromise = undefined;
+		await finishAgentRun(authToken, id);
+	}
+}
+
 async function startAgentRun(authToken: string): Promise<string> {
 	const res = await fetch(`${CODEBUFF_BASE_URL}/api/v1/agent-runs`, {
 		method: "POST",
@@ -92,7 +183,11 @@ async function startAgentRun(authToken: string): Promise<string> {
 			"Content-Type": "application/json",
 			Authorization: `Bearer ${authToken}`,
 		},
-		body: JSON.stringify({ action: "START", agentId: CODEBUFF_AGENT_ID }),
+		body: JSON.stringify({
+			action: "START",
+			agentId: CODEBUFF_AGENT_ID,
+			ancestorRunIds: [],
+		}),
 	});
 	if (!res.ok) {
 		throw new Error(
@@ -125,19 +220,51 @@ async function finishAgentRun(authToken: string, runId: string): Promise<void> {
 	}
 }
 
+/**
+ * Stream via pi-ai's OpenAI-completions serializer, but inject Codebuff fields
+ * before the request is sent. HTTP still targets /api/v1/chat/completions through pi's
+ * OpenAI client — the same backend path as @codebuff/sdk createCodebuffBackendModel,
+ * not client.run() / callMainPrompt (the local agent harness).
+ */
+function createCodebuffStreamSimple(session: CodebuffRunSession) {
+	return (
+		model: Model<"openai-completions">,
+		context: Context,
+		options?: SimpleStreamOptions,
+	) => {
+		return streamSimpleOpenAICompletions(model, context, {
+			...options,
+			onPayload: async (payload, payloadModel) => {
+				let next = await session.enrichPayload(
+					(payload ?? {}) as Record<string, unknown>,
+					model.id,
+					options?.apiKey,
+				);
+				if (options?.onPayload) {
+					next =
+						((await options.onPayload(next, payloadModel)) as
+							| Record<string, unknown>
+							| undefined) ?? next;
+				}
+				return next;
+			},
+		});
+	};
+}
+
 export default function (pi: ExtensionAPI) {
-	let runId: string | undefined;
-	let cachedToken: string | undefined;
-	let startPromise: Promise<string> | undefined;
-	const clientId = crypto.randomUUID();
+	const session = new CodebuffRunSession();
+	session.prefetchRun();
 
 	pi.registerProvider("codebuff", {
 		name: "Codebuff",
 		baseUrl: `${CODEBUFF_BASE_URL}/api/v1`,
 		apiKey: "CODEBUFF_API_KEY",
 		api: "openai-completions",
+		authHeader: true,
+		streamSimple: createCodebuffStreamSimple(session),
 		headers: {
-			"user-agent": "ai-sdk/openai-compatible/0.10.7/codebuff",
+			"user-agent": CODEBUFF_USER_AGENT,
 		},
 		models: [
 			{
@@ -160,6 +287,26 @@ export default function (pi: ExtensionAPI) {
 				maxTokens: 32000,
 				compat: { cacheControlFormat: "anthropic" },
 			},
+			{
+				id: "z-ai/glm-5.2",
+				name: "GLM 5.2 (Codebuff)",
+				reasoning: true,
+				thinkingLevelMap: {
+					minimal: null,
+					low: null,
+					medium: "medium",
+					high: "high",
+					xhigh: "xhigh",
+				},
+				input: ["text"],
+				cost: { input: 1.2, output: 4.1, cacheRead: 0.2, cacheWrite: 1.2 },
+				contextWindow: 1048576,
+				maxTokens: 131072,
+				compat: {
+					thinkingFormat: "openrouter",
+					supportsReasoningEffort: true,
+				},
+			},
 		],
 		oauth: {
 			name: "Codebuff",
@@ -169,45 +316,11 @@ export default function (pi: ExtensionAPI) {
 		},
 	});
 
-	pi.on("before_provider_request", async (event, ctx) => {
-		const model = (ctx as { model?: { provider?: string } }).model;
-		if (!model || model.provider !== "codebuff") return;
-
-		if (!cachedToken) cachedToken = readCodebuffToken();
-		if (!cachedToken) return; // pi will surface 401 from codebuff
-
-		if (!runId) {
-			if (!startPromise) startPromise = startAgentRun(cachedToken);
-			runId = await startPromise;
-		}
-
-		const payload = (event.payload ?? {}) as Record<string, unknown>;
-		const existingMeta =
-			(payload.codebuff_metadata as Record<string, unknown> | undefined) ?? {};
-		const existingProvider =
-			(payload.provider as Record<string, unknown> | undefined) ?? {};
-		return {
-			...payload,
-			codebuff_metadata: {
-				...existingMeta,
-				run_id: runId,
-				client_id: clientId,
-			},
-			provider: {
-				allow_fallbacks: true,
-				...existingProvider,
-			},
-			usage: { include: true },
-		};
+	pi.on("session_start", () => {
+		session.prefetchRun();
 	});
 
 	pi.on("session_shutdown", async () => {
-		if (runId && cachedToken) {
-			const id = runId;
-			const token = cachedToken;
-			runId = undefined;
-			startPromise = undefined;
-			await finishAgentRun(token, id);
-		}
+		await session.finish();
 	});
 }

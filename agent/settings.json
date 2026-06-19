@@ -1,21 +1,19 @@
 {
-  "lastChangelogVersion": "0.75.5",
+  "lastChangelogVersion": "0.79.7",
   "defaultProvider": "openai-codex",
   "defaultModel": "gpt-5.5",
-  "defaultThinkingLevel": "xhigh",
+  "defaultThinkingLevel": "medium",
   "packages": [
     "npm:pi-subagents",
     "extensions/enable-ls.ts",
     "extensions/enable-grep.ts",
     "extensions/model-system-prompt.ts",
     "extensions/codebuff-provider.ts",
-    "extensions/kilo-gateway-provider.ts",
-    "npm:pi-claude-cli",
-    "npm:@ff-labs/pi-fff",
-    "npm:pi-cursor-sdk"
+    "npm:@ff-labs/pi-fff"
   ],
   "subagents": {
     "disableBuiltins": true
   },
-  "hideThinkingBlock": false
+  "hideThinkingBlock": false,
+  "theme": "dark"
 }

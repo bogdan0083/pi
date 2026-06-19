@@ -3,13 +3,9 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 /**
  * Search policy:
  *   1. Activate the built-in `grep` tool on session start (it is off by default).
- *   2. Block the built-in `find` tool — `grep` covers filename discovery too.
- *   3. Block bash commands that invoke `find`, shell `grep`/`egrep`/`fgrep`,
- *      `git grep`, `fd`/`fdfind`, `ag`, `ack`, or `xargs <banned>`. `find`
- *      and grep variants are allowed when they appear after a pipe (i.e. not
- *      the first command in a pipeline). `rg` is allowed only for the
- *      documented exception for ignored paths; use `rg` patterns/flags
- *      directly rather than piping to shell `grep`.
+ *   2. Block bash commands that invoke `fd`/`fdfind`, `ag`, `ack`, or
+ *      `xargs <banned>`. `rg` is allowed only for the documented exception for
+ *      ignored paths.
  *
  * Blocked calls return a reason explaining what to use instead, so the agent
  * can self-correct and switch to the built-in `grep` tool.
@@ -22,10 +18,6 @@ const REDIRECT_HINT =
 	"files) use Bash `rg -n --hidden --no-ignore '<pattern>' <path>`.";
 
 const BANNED_BINARIES = new Set([
-	"find",
-	"grep",
-	"egrep",
-	"fgrep",
 	"fd",
 	"fdfind",
 	"ag",
@@ -35,23 +27,20 @@ const BANNED_BINARIES = new Set([
 const ENV_ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*=/;
 
 /**
- * Returns the offending command name (e.g. "find", "git grep", "xargs grep")
- * if the bash command line invokes a banned search utility, otherwise null.
+ * Returns the offending command name (e.g. "fd", "xargs fd") if the bash
+ * command line invokes a banned search utility, otherwise null.
  *
  * The scan splits the command line at shell boundaries (`|`, `;`, `&`, `&&`,
- * `||`, newlines, `$(`, backticks) and inspects the head of each segment
- * after stripping leading `VAR=value` env assignments. A shell `grep` segment
- * is allowed only when it is filtering a pipeline whose first command is `rg`.
+ * `||`, newlines, `$(`, backticks) and inspects the head of each segment after
+ * stripping leading `VAR=value` env assignments.
  */
 function detectBannedSearchCommand(command: string): string | null {
 	const segments = command.split(/(\$\(|`|\|\||&&|;|\||&|\n)/);
-	let firstPipelineBase: string | null = null;
 	let lastSeparator: string | null = null;
 
 	for (const seg of segments) {
 		if (/^(?:\$\(|`|\|\||&&|;|\||&|\n)$/.test(seg)) {
 			lastSeparator = seg;
-			if (seg !== "|") firstPipelineBase = null;
 			continue;
 		}
 
@@ -64,20 +53,8 @@ function detectBannedSearchCommand(command: string): string | null {
 		if (!head) continue;
 		const base = (head.split("/").pop() ?? head).replace(/^\\/, "");
 
-		if (lastSeparator !== "|") firstPipelineBase = base;
-
-		const isPiped = lastSeparator === "|";
-
 		if (BANNED_BINARIES.has(base)) {
-			if (isPiped && (base === "find" || base === "grep" || base === "egrep" || base === "fgrep")) {
-				continue;
-			}
 			return base;
-		}
-
-		if (base === "git" && tokens[i + 1] === "grep") {
-			if (isPiped) continue;
-			return "git grep";
 		}
 
 		if (base === "xargs") {
@@ -86,9 +63,6 @@ function detectBannedSearchCommand(command: string): string | null {
 				if (t.startsWith("-")) continue;
 				const tb = (t.split("/").pop() ?? t).replace(/^\\/, "");
 				if (BANNED_BINARIES.has(tb)) {
-					if (isPiped && (tb === "find" || tb === "grep" || tb === "egrep" || tb === "fgrep")) {
-						break;
-					}
 					return `xargs ${tb}`;
 				}
 				break;
@@ -107,13 +81,6 @@ export default function (pi: ExtensionAPI) {
 	});
 
 	pi.on("tool_call", (event) => {
-		if (event.toolName === "find") {
-			return {
-				block: true,
-				reason: `The built-in \`find\` tool is disabled. ${REDIRECT_HINT}`,
-			};
-		}
-
 		if (event.toolName === "bash") {
 			const command = (event.input as { command?: unknown } | undefined)?.command;
 			if (typeof command !== "string") return;

@@ -1,0 +1,21 @@
+{
+  "lastChangelogVersion": "0.79.2",
+  "defaultProvider": "openrouter",
+  "defaultModel": "moonshotai/kimi-k2.7-code",
+  "defaultThinkingLevel": "high",
+  "packages": [
+    "npm:pi-subagents",
+    "extensions/enable-ls.ts",
+    "extensions/enable-grep.ts",
+    "extensions/model-system-prompt.ts",
+    "extensions/codebuff-provider.ts",
+    "extensions/kilo-gateway-provider.ts",
+    "npm:pi-claude-cli",
+    "npm:pi-cursor-sdk",
+    "npm:@ff-labs/pi-fff"
+  ],
+  "subagents": {
+    "disableBuiltins": true
+  },
+  "hideThinkingBlock": false
+}

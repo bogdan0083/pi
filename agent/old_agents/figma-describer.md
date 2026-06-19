@@ -2,8 +2,8 @@
 name: figma-describer
 description: Detailed read-only Figma layout describer using figma-use; returns implementation-ready descriptions plus ASCII visual diagrams.
 tools: read, bash, ls
-model: openrouter/deepseek/deepseek-v4-flash
-thinking: high
+model: cursor/composer-2.5
+thinking: medium
 systemPromptMode: replace
 inheritProjectContext: false
 inheritSkills: false
