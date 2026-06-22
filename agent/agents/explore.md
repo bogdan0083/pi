@@ -2,8 +2,8 @@
 name: explore
 description: Fast, read-only codebase exploration and file search specialist. Parent must prefix task with "Review only. Do not edit files. Return advice/findings only."
 tools: read, grep, bash, ls
-model: cursor/composer-2.5
-thinking: high
+model: opencode/deepseek-v4-flash-free
+thinking: xhigh
 systemPromptMode: replace
 inheritProjectContext: true
 inheritSkills: false

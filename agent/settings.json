@@ -1,8 +1,8 @@
 {
-  "lastChangelogVersion": "0.79.7",
-  "defaultProvider": "openai-codex",
-  "defaultModel": "gpt-5.5",
-  "defaultThinkingLevel": "medium",
+  "lastChangelogVersion": "0.79.9",
+  "defaultProvider": "codebuff",
+  "defaultModel": "z-ai/glm-5.2",
+  "defaultThinkingLevel": "xhigh",
   "packages": [
     "npm:pi-subagents",
     "extensions/enable-ls.ts",

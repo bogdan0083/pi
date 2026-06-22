@@ -1,15 +1,19 @@
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
 import {
-	streamSimpleOpenAICompletions,
 	type Context,
 	type Model,
 	type OAuthCredentials,
 	type OAuthLoginCallbacks,
 	type SimpleStreamOptions,
+	type StreamOptions,
 } from "@earendil-works/pi-ai";
+import {
+	streamOpenAICompletions,
+	streamSimpleOpenAICompletions,
+} from "/Users/bgdn0083/.asdf/installs/nodejs/24.14.0/lib/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/dist/providers/openai-completions.js";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 const CODEBUFF_BASE_URL = "https://www.codebuff.com";
@@ -18,10 +22,11 @@ const CODEBUFF_USER_AGENT =
 	"ai-sdk/openai-compatible/0.10.7/codebuff ai-sdk/provider-utils/3.0.20 runtime/node";
 const AUTH_FILE = join(homedir(), ".pi", "agent", "auth.json");
 
-/** OpenRouter provider order mirrored from @codebuff/sdk src/impl/llm.ts */
+/** OpenRouter inner provider order for Codebuff requests. */
 const PROVIDER_ORDER: Record<string, string[]> = {
 	"anthropic/claude-sonnet-4.6": ["Google", "Anthropic", "Amazon Bedrock"],
 	"anthropic/claude-opus-4.7": ["Google", "Anthropic"],
+	"z-ai/glm-5.2": ["Together"],
 };
 
 interface LoginCodeResponse {
@@ -148,7 +153,7 @@ class CodebuffRunSession {
 		const existingMeta =
 			(payload.codebuff_metadata as Record<string, unknown> | undefined) ?? {};
 		const providerOrder = PROVIDER_ORDER[modelId];
-		return {
+		const enriched = {
 			...payload,
 			codebuff_metadata: {
 				...existingMeta,
@@ -163,6 +168,9 @@ class CodebuffRunSession {
 			},
 			usage: { include: true },
 		};
+		return modelId === "z-ai/glm-5.2"
+			? sanitizeGlm52Payload(enriched)
+			: enriched;
 	}
 
 	async finish(token?: string): Promise<void> {
@@ -220,35 +228,135 @@ async function finishAgentRun(authToken: string, runId: string): Promise<void> {
 	}
 }
 
+function sanitizeGlm52Payload(
+	payload: Record<string, unknown>,
+): Record<string, unknown> {
+	if (!Array.isArray(payload.messages)) return payload;
+
+	return {
+		...payload,
+		messages: payload.messages.map((message) => {
+			if (
+				!message ||
+				typeof message !== "object" ||
+				(message as { role?: unknown }).role !== "assistant"
+			) {
+				return message;
+			}
+
+			const next = { ...(message as Record<string, unknown>) };
+			// GLM 5.2 via Codebuff/OpenRouter accepts reasoning controls on the
+			// request, but rejects replayed assistant reasoning fields on the next
+			// turn (Codebuff returns 400 with an empty body). Keep only normal chat
+			// content/tool calls in history.
+			delete next.reasoning;
+			delete next.reasoning_content;
+			delete next.reasoning_text;
+			delete next.reasoning_details;
+
+			// z.ai-compatible chat endpoints are stricter than OpenAI about assistant
+			// tool-call messages: `content: null` can make the follow-up request fail.
+			if (next.content == null && Array.isArray(next.tool_calls)) {
+				next.content = "";
+			}
+
+			return next;
+		}),
+	};
+}
+
+function debugCodebuffPayload(
+	modelId: string,
+	payload: Record<string, unknown>,
+): void {
+	debugCodebuff(modelId, "payload", payload);
+}
+
+function debugCodebuff(
+	modelId: string,
+	kind: string,
+	data: Record<string, unknown>,
+): void {
+	const debugDir = process.env.CODEBUFF_DEBUG_DIR;
+	if (!debugDir || modelId !== "z-ai/glm-5.2") return;
+	try {
+		mkdirSync(debugDir, { recursive: true });
+		writeFileSync(
+			join(debugDir, `${kind}-${Date.now()}.json`),
+			`${JSON.stringify(data, null, 2)}\n`,
+		);
+	} catch {
+		// Debug logging must never break provider calls.
+	}
+}
+
 /**
  * Stream via pi-ai's OpenAI-completions serializer, but inject Codebuff fields
  * before the request is sent. HTTP still targets /api/v1/chat/completions through pi's
  * OpenAI client — the same backend path as @codebuff/sdk createCodebuffBackendModel,
  * not client.run() / callMainPrompt (the local agent harness).
  */
+function withCodebuffPayloadHook<TOptions extends StreamOptions>(
+	session: CodebuffRunSession,
+	model: Model<"openai-completions">,
+	options?: TOptions,
+): TOptions {
+	return {
+		...options,
+		onPayload: async (payload, payloadModel) => {
+			let next = await session.enrichPayload(
+				(payload ?? {}) as Record<string, unknown>,
+				model.id,
+				options?.apiKey,
+			);
+			if (options?.onPayload) {
+				next =
+					((await options.onPayload(next, payloadModel)) as
+						| Record<string, unknown>
+						| undefined) ?? next;
+			}
+			if (model.id === "z-ai/glm-5.2") {
+				next = sanitizeGlm52Payload(next);
+			}
+			debugCodebuffPayload(model.id, next);
+			return next;
+		},
+	} as TOptions;
+}
+
+function createCodebuffStream(session: CodebuffRunSession) {
+	return (
+		model: Model<"openai-completions">,
+		context: Context,
+		options?: StreamOptions,
+	) => {
+		debugCodebuff(model.id, "stream", {
+			messageCount: context.messages.length,
+			lastRole: context.messages.at(-1)?.role,
+		});
+		return streamOpenAICompletions(
+			model,
+			context,
+			withCodebuffPayloadHook(session, model, options),
+		);
+	};
+}
+
 function createCodebuffStreamSimple(session: CodebuffRunSession) {
 	return (
 		model: Model<"openai-completions">,
 		context: Context,
 		options?: SimpleStreamOptions,
 	) => {
-		return streamSimpleOpenAICompletions(model, context, {
-			...options,
-			onPayload: async (payload, payloadModel) => {
-				let next = await session.enrichPayload(
-					(payload ?? {}) as Record<string, unknown>,
-					model.id,
-					options?.apiKey,
-				);
-				if (options?.onPayload) {
-					next =
-						((await options.onPayload(next, payloadModel)) as
-							| Record<string, unknown>
-							| undefined) ?? next;
-				}
-				return next;
-			},
+		debugCodebuff(model.id, "streamSimple", {
+			messageCount: context.messages.length,
+			lastRole: context.messages.at(-1)?.role,
 		});
+		return streamSimpleOpenAICompletions(
+			model,
+			context,
+			withCodebuffPayloadHook(session, model, options),
+		);
 	};
 }
 
@@ -262,6 +370,7 @@ export default function (pi: ExtensionAPI) {
 		apiKey: "CODEBUFF_API_KEY",
 		api: "openai-completions",
 		authHeader: true,
+		stream: createCodebuffStream(session),
 		streamSimple: createCodebuffStreamSimple(session),
 		headers: {
 			"user-agent": CODEBUFF_USER_AGENT,

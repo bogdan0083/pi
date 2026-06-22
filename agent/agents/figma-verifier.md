@@ -2,8 +2,8 @@
 name: figma-verifier
 description: Verifies implemented markup, styles, and layout against Figma designs using the `figma-use` CLI. Invoke after implementation is complete to confirm the result matches the design.
 tools: read, grep, bash, ls
-model: cursor/composer-2.5
-thinking: medium
+model: opencode/deepseek-v4-flash-free
+thinking: xhigh
 systemPromptMode: replace
 inheritProjectContext: true
 inheritSkills: true

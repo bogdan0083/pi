@@ -2,8 +2,8 @@
 name: web-search
 description: Web research specialist using Cursor's native web_search tool first; Exa only as fallback if native search is unavailable.
 tools: web_search, bash
-model: cursor/composer-2.5
-thinking: high
+model: opencode/deepseek-v4-flash-free
+thinking: xhigh
 systemPromptMode: replace
 inheritProjectContext: false
 inheritSkills: false
