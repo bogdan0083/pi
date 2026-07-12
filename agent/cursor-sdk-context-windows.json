@@ -1,0 +1,5 @@
+{
+  "contextWindows": {
+    "grok-4.5": 256000
+  }
+}

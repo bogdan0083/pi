@@ -1,5 +1,6 @@
 {
   "fastDefaults": {
-    "composer-2.5": true
+    "composer-2.5": true,
+    "grok-4.5": false
   }
 }
