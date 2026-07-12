@@ -1,0 +1,3 @@
+Use `rg` (ripgrep) via the Bash tool for filename and content searches. Do not use the built-in `grep` tool or shell `grep`.
+
+For every non-trivial user prompt, perform an initial exploration before using the `ask_question` tool. Inspect the relevant files, context, and available information first; then ask only about requirements, intent, preferences, constraints, or details that remain missing, unclear, or inconsistent. Ask concise clarification questions with useful selectable answers, grouping independent questions into one call when possible; do not guess. Keep custom answers enabled unless only the listed choices are valid.

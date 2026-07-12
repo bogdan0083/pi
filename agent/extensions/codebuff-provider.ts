@@ -11,9 +11,9 @@ import {
 	type StreamOptions,
 } from "@earendil-works/pi-ai";
 import {
-	streamOpenAICompletions,
-	streamSimpleOpenAICompletions,
-} from "/Users/bgdn0083/.asdf/installs/nodejs/24.14.0/lib/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/dist/providers/openai-completions.js";
+	stream as streamOpenAICompletions,
+	streamSimple as streamSimpleOpenAICompletions,
+} from "/Users/bgdn0083/.asdf/installs/nodejs/24.14.0/lib/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/dist/api/openai-completions.js";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 const CODEBUFF_BASE_URL = "https://www.codebuff.com";
@@ -26,7 +26,7 @@ const AUTH_FILE = join(homedir(), ".pi", "agent", "auth.json");
 const PROVIDER_ORDER: Record<string, string[]> = {
 	"anthropic/claude-sonnet-4.6": ["Google", "Anthropic", "Amazon Bedrock"],
 	"anthropic/claude-opus-4.7": ["Google", "Anthropic"],
-	"z-ai/glm-5.2": ["Together"],
+	"z-ai/glm-5.2": ["NovitaAI"],
 };
 
 interface LoginCodeResponse {
@@ -384,7 +384,16 @@ export default function (pi: ExtensionAPI) {
 				cost: { input: 5, output: 25, cacheRead: 0.5, cacheWrite: 6.25 },
 				contextWindow: 200000,
 				maxTokens: 32000,
-				compat: { cacheControlFormat: "anthropic" },
+				compat: {
+					cacheControlFormat: "anthropic",
+					// Codebuff routes through an OpenRouter-like backend that does not
+					// honor the OpenAI `developer` role. Without this, pi-ai's
+					// detectCompat() sees a non-OpenRouter, non-nonStandard provider and
+					// sends the system prompt (which contains <available_skills>) as
+					// role="developer", which the upstream model ignores — so skills,
+					// guidelines, and project context silently disappear.
+					supportsDeveloperRole: false,
+				},
 			},
 			{
 				id: "anthropic/claude-sonnet-4.6",
@@ -394,7 +403,10 @@ export default function (pi: ExtensionAPI) {
 				cost: { input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75 },
 				contextWindow: 200000,
 				maxTokens: 32000,
-				compat: { cacheControlFormat: "anthropic" },
+				compat: {
+					cacheControlFormat: "anthropic",
+					supportsDeveloperRole: false,
+				},
 			},
 			{
 				id: "z-ai/glm-5.2",
@@ -414,6 +426,28 @@ export default function (pi: ExtensionAPI) {
 				compat: {
 					thinkingFormat: "openrouter",
 					supportsReasoningEffort: true,
+					supportsDeveloperRole: false,
+				},
+			},
+			{
+				id: "x-ai/grok-4.5",
+				name: "Grok 4.5 (Codebuff)",
+				reasoning: true,
+				thinkingLevelMap: {
+					minimal: "low",
+					low: "low",
+					medium: "medium",
+					high: "high",
+					xhigh: "high",
+				},
+				input: ["text", "image"],
+				cost: { input: 2, output: 6, cacheRead: 0.5, cacheWrite: 2 },
+				contextWindow: 500000,
+				maxTokens: 131072,
+				compat: {
+					thinkingFormat: "openrouter",
+					supportsReasoningEffort: true,
+					supportsDeveloperRole: false,
 				},
 			},
 		],
