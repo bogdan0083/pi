@@ -2,7 +2,7 @@
 name: foquz-browser
 description: Foquz browser automation with hc-run for login, inspection, screenshots, and API capture.
 tools: read, bash
-model: openai-codex/gpt-5.6-luna
+model: cursor/grok-4.5
 thinking: high
 systemPromptMode: replace
 inheritProjectContext: true

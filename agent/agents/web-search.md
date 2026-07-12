@@ -2,7 +2,7 @@
 name: web-search
 description: Read-only web research using Exa and direct HTTP requests.
 tools: bash
-model: openai-codex/gpt-5.6-luna
+model: cursor/composer-2.5:fast
 thinking: high
 systemPromptMode: replace
 inheritProjectContext: false

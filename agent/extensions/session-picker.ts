@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from "node:fs";
+import { basename } from "node:path";
 import type { ExtensionAPI, SessionInfo } from "@earendil-works/pi-coding-agent";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 import type { AutocompleteItem, AutocompleteProvider, AutocompleteSuggestions } from "@earendil-works/pi-tui";
@@ -5,9 +7,14 @@ import { fuzzyFilter } from "@earendil-works/pi-tui";
 
 const MAX_ITEMS = 20;
 const CACHE_TTL_MS = 10_000;
+const PROJECTS_FILE = `${process.env.HOME || ""}/.config/lazygit/fixed-repos.txt`;
 
 type SessionAutocompleteItem = AutocompleteItem & {
   sessionId?: string;
+};
+
+type ProjectAutocompleteItem = AutocompleteItem & {
+  projectPath: string;
 };
 
 function extractSessionPrefix(lines: string[], cursorLine: number, cursorCol: number): { prefix: string; query: string } | null {
@@ -18,6 +25,33 @@ function extractSessionPrefix(lines: string[], cursorLine: number, cursorCol: nu
   return {
     prefix: match[1] ?? "@@",
     query: match[2] ?? "",
+  };
+}
+
+function extractProjectPrefix(lines: string[], cursorLine: number, cursorCol: number): { prefix: string; query: string } | null {
+  const line = lines[cursorLine] ?? "";
+  const beforeCursor = line.slice(0, cursorCol);
+  const match = beforeCursor.match(/(?:^|[ \t])(@@@([^\s@]*))$/);
+  if (!match) return null;
+  return {
+    prefix: match[1] ?? "@@@",
+    query: match[2] ?? "",
+  };
+}
+
+function loadProjects(): string[] {
+  if (!PROJECTS_FILE || !existsSync(PROJECTS_FILE)) return [];
+  return readFileSync(PROJECTS_FILE, "utf8")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0 && !line.startsWith("#") && existsSync(line));
+}
+
+function toProjectItem(projectPath: string): ProjectAutocompleteItem {
+  return {
+    value: `@${projectPath}/`,
+    label: `${basename(projectPath)}  · ${shortPath(projectPath)}`,
+    projectPath,
   };
 }
 
@@ -85,6 +119,7 @@ class SessionAutocompleteProvider implements AutocompleteProvider {
   private lastLoadTime = 0;
   private hasLoaded = false;
   private loading: Promise<SessionInfo[]> | null = null;
+  private projectCompletionPending = false;
 
   constructor(private current: AutocompleteProvider) {}
 
@@ -114,6 +149,16 @@ class SessionAutocompleteProvider implements AutocompleteProvider {
     cursorCol: number,
     options: { signal: AbortSignal; force?: boolean },
   ): Promise<AutocompleteSuggestions | null> {
+    const projectPrefix = extractProjectPrefix(lines, cursorLine, cursorCol);
+    if (projectPrefix) {
+      const projects = loadProjects();
+      const matches = projectPrefix.query
+        ? fuzzyFilter(projects, projectPrefix.query, (projectPath) => `${basename(projectPath)} ${projectPath}`)
+        : projects;
+      const items = matches.slice(0, MAX_ITEMS).map(toProjectItem);
+      return items.length > 0 ? { items, prefix: projectPrefix.prefix } : null;
+    }
+
     const sessionPrefix = extractSessionPrefix(lines, cursorLine, cursorCol);
     if (sessionPrefix) {
       const sessions = await this.getSessions();
@@ -131,10 +176,33 @@ class SessionAutocompleteProvider implements AutocompleteProvider {
   }
 
   applyCompletion(lines: string[], cursorLine: number, cursorCol: number, item: AutocompleteItem, prefix: string) {
+    if (prefix.startsWith("@@@") && "projectPath" in item) {
+      this.projectCompletionPending = true;
+      const replacement = item.value;
+      const nextLines = [...lines];
+      const line = nextLines[cursorLine] ?? "";
+      const start = Math.max(0, cursorCol - prefix.length);
+      nextLines[cursorLine] = line.slice(0, start) + replacement + line.slice(cursorCol);
+      return {
+        lines: nextLines,
+        cursorLine,
+        cursorCol: start + replacement.length,
+      };
+    }
     if (prefix.startsWith("@@") && item.value.startsWith("@@")) {
       return applySessionCompletion(lines, cursorLine, cursorCol, item, prefix);
     }
-    return this.current.applyCompletion(lines, cursorLine, cursorCol, item, prefix);
+    const completion = this.current.applyCompletion(lines, cursorLine, cursorCol, item, prefix);
+    if (this.projectCompletionPending && prefix.startsWith("@/")) {
+      this.projectCompletionPending = false;
+      const completedLine = completion.lines[completion.cursorLine] ?? "";
+      const markerStart = Math.max(0, completion.cursorCol - item.value.length);
+      if (completedLine[markerStart] === "@") {
+        completion.lines[completion.cursorLine] = completedLine.slice(0, markerStart) + completedLine.slice(markerStart + 1);
+        completion.cursorCol--;
+      }
+    }
+    return completion;
   }
 
   shouldTriggerFileCompletion(lines: string[], cursorLine: number, cursorCol: number): boolean {
