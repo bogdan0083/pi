@@ -5,7 +5,7 @@ For every non-trivial user prompt, perform an initial exploration before using t
 ## Subagents
 
 Available subagents:
-- `explore` — read-only codebase exploration and file search. Use it for any non-trivial codebase explorations and file-search tasks.
+- `explore` — read-only codebase exploration and file search
 - `advisor` — technical advice, review, and completion checks
 - `foquz-browser` — Foquz browser automation
 - `web-search` — read-only web research

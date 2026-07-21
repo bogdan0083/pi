@@ -2,7 +2,7 @@
 name: explore
 description: Read-only codebase exploration and file search specialist.
 tools: read, bash, ls
-model: cursor/grok-4.5
+model: openai-codex/gpt-5.6-terra
 thinking: medium
 systemPromptMode: replace
 inheritProjectContext: true
