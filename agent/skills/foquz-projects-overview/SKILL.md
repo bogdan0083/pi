@@ -20,6 +20,7 @@ Foquz is split across multiple local repositories. Use this map to locate the pr
 
 | Project path | Purpose and aliases |
 |---|---|
+| `/Users/bgdn0083/projects/foquz-repositories` | Container folder for `foquz-core` and all backend services. Holds shared Docker/compose config (`compose.yml`), service configs (`auth.yml`, `sa.yml`, `text-answers.yml`, `widget.yml`), and planning docs (`anketa-status-refactor-plan.md`, `quota-limit-implementation.md`). |
 | `/Users/bgdn0083/projects/poll-vue-app` | Vue respondent poll walkthrough. Often called **«Прохождение»**. Replaces the legacy `ko/pages/poll/process` implementation. |
 | `/Users/bgdn0083/projects/foquz-frontend-vue` | Vue and TypeScript monorepo containing `apps/admin`, `apps/superadmin`, and `packages/common`. Often called **«Новый КВ»**. |
 | `/Users/bgdn0083/projects/foquz-widget-dom` | VanJS DOM embed without an iframe. Often called **«DOM-виджет»** or **«виджет»**. |
@@ -28,13 +29,14 @@ Foquz is split across multiple local repositories. Use this map to locate the pr
 
 ## Backend projects
 
-Backend repositories are located under:
+Backend repositories are located under the repositories folder:
 
 `/Users/bgdn0083/projects/foquz-repositories/`
 
 | Project | Purpose |
 |---|---|
 | `foquz-poll-api` | Symfony API for the new questionnaire constructor. Task environment OpenAPI is usually available at `https://task-N.docs.foquzdev.ru/openapi/poll.json`. |
+| `foquz-stats-analyzing-api` | Statistics-analyzing service. |
 | `foquz-auth-api` | Authentication service. |
 | `foquz-mailings` | Mailing-related service. |
 | `foquz-screenshoot-api` | Screenshot-related service. |

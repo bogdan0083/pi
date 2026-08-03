@@ -1,20 +1,16 @@
 {
-  "lastChangelogVersion": "0.80.10",
+  "lastChangelogVersion": "0.83.0",
   "defaultProvider": "openai-codex",
   "defaultModel": "gpt-5.6-sol",
-  "defaultThinkingLevel": "medium",
+  "defaultThinkingLevel": "xhigh",
   "packages": [
-    {
-      "source": "npm:pi-subagents",
-      "skills": []
-    },
-    "extensions/enable-ls.ts",
+    "extensions/read-directories.ts",
+    "extensions/disable-grep.ts",
     "extensions/codebuff-provider.ts",
+    "extensions/freebuff-provider.ts",
+    "~/projects/pi-subagents/index.ts",
     "npm:pi-cursor-sdk"
   ],
-  "subagents": {
-    "disableBuiltins": true
-  },
   "hideThinkingBlock": false,
   "theme": "dark"
 }

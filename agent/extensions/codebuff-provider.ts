@@ -26,7 +26,7 @@ const AUTH_FILE = join(homedir(), ".pi", "agent", "auth.json");
 const PROVIDER_ORDER: Record<string, string[]> = {
 	"anthropic/claude-sonnet-4.6": ["Google", "Anthropic", "Amazon Bedrock"],
 	"anthropic/claude-opus-4.7": ["Google", "Anthropic"],
-	"z-ai/glm-5.2": ["NovitaAI"],
+	"z-ai/glm-5.2": ["baseten/fast"],
 };
 
 interface LoginCodeResponse {

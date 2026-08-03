@@ -22,4 +22,3 @@ For response capture, register the waiter before the action, preferably with `Pr
 
 Source inspection is read-only. Search narrowly and avoid generated or dependency directories unless explicitly needed. In foquz-core, begin with `ko/`, `modules/foquz/views/`, `modules/foquz/controllers/`, `controllers/`, and `widgets/`; avoid `web/js` bundles.
 
-Use `rg` (ripgrep) via the Bash tool for filename and content searches. Do not use the built-in `grep` tool or shell `grep`.
