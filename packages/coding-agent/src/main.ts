@@ -46,6 +46,7 @@ import {
 	MissingSessionCwdError,
 	type SessionCwdIssue,
 } from "./core/session-cwd.ts";
+import { SESSION_LEASE_FORMAT_VERSION } from "./core/session-lease.ts";
 import { assertValidSessionId, SessionManager } from "./core/session-manager.ts";
 import { SettingsManager } from "./core/settings-manager.ts";
 import { printTimings, resetTimings, time } from "./core/timings.ts";
@@ -572,6 +573,23 @@ export async function main(args: string[], options?: MainOptions) {
 
 	if (parsed.version) {
 		console.log(VERSION);
+		process.exit(0);
+	}
+
+	if (parsed.capabilities) {
+		// Machine-readable capability report for orchestrators (pi-remote),
+		// so they can fail closed when the binary lacks a required feature
+		// instead of parsing --version or --help output.
+		console.log(
+			JSON.stringify({
+				version: VERSION,
+				capabilities: {
+					// Exclusive advisory JSONL writer lease (ADR-6); value is
+					// the lease metadata format version.
+					sessionWriteLease: SESSION_LEASE_FORMAT_VERSION,
+				},
+			}),
+		);
 		process.exit(0);
 	}
 

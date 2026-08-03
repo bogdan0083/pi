@@ -85,6 +85,7 @@ import {
 import { DefaultPackageManager } from "../../core/package-manager.ts";
 import type { ResourceDiagnostic } from "../../core/resource-loader.ts";
 import { formatMissingSessionCwdPrompt, MissingSessionCwdError } from "../../core/session-cwd.ts";
+import { SessionLeaseConflictError } from "../../core/session-lease.ts";
 import { type SessionEntry, SessionManager, sessionEntryToContextMessages } from "../../core/session-manager.ts";
 import { BUILTIN_SLASH_COMMANDS } from "../../core/slash-commands.ts";
 import type { SourceInfo } from "../../core/source-info.ts";
@@ -1649,6 +1650,10 @@ export class InteractiveMode {
 					try {
 						return await this.runtimeHost.newSession(options);
 					} catch (error: unknown) {
+						if (error instanceof SessionLeaseConflictError) {
+							this.showError(error.message);
+							return { cancelled: true };
+						}
 						return this.handleFatalRuntimeError("Failed to create session", error);
 					}
 				},
@@ -1661,6 +1666,10 @@ export class InteractiveMode {
 						}
 						return { cancelled: result.cancelled };
 					} catch (error: unknown) {
+						if (error instanceof SessionLeaseConflictError) {
+							this.showError(error.message);
+							return { cancelled: true };
+						}
 						return this.handleFatalRuntimeError("Failed to fork session", error);
 					}
 				},
@@ -4804,8 +4813,18 @@ export class InteractiveMode {
 					renameSession: async (sessionFilePath: string, nextName: string | undefined) => {
 						const next = (nextName ?? "").trim();
 						if (!next) return;
-						const mgr = SessionManager.open(sessionFilePath);
-						mgr.appendSessionInfo(next);
+						try {
+							// Write-lease the target session: renaming a session that is
+							// open in another Pi process fails with a clear conflict.
+							const mgr = SessionManager.open(sessionFilePath);
+							try {
+								mgr.appendSessionInfo(next);
+							} finally {
+								mgr.dispose();
+							}
+						} catch (error) {
+							this.showError(error instanceof Error ? error.message : String(error));
+						}
 					},
 					showRenameHint: true,
 					keybindings: this.keybindings,
@@ -4849,6 +4868,10 @@ export class InteractiveMode {
 				}
 				this.showStatus("Resumed session in current cwd");
 				return result;
+			}
+			if (error instanceof SessionLeaseConflictError) {
+				this.showError(error.message);
+				return { cancelled: true };
 			}
 			return this.handleFatalRuntimeError("Failed to resume session", error);
 		}

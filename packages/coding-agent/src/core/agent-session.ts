@@ -850,6 +850,12 @@ export class AgentSession {
 		);
 		this._disconnectFromAgent();
 		this._eventListeners = [];
+		try {
+			// Release the session write lease (another process may now open it).
+			this.sessionManager.dispose();
+		} catch {
+			// Dispose must succeed; the process-exit hook is the backstop.
+		}
 		cleanupSessionResources(this.sessionId);
 	}
 

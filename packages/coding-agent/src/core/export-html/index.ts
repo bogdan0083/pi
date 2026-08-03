@@ -293,7 +293,9 @@ export async function exportFromFile(inputPath: string, options?: ExportOptions 
 		throw new Error(`File not found: ${resolvedInputPath}`);
 	}
 
-	const sm = SessionManager.open(resolvedInputPath);
+	// Read-only open: never takes the session write lease, so exporting a live
+	// session works and never disturbs the owning process.
+	const sm = SessionManager.openReadOnly(resolvedInputPath);
 
 	const sessionData: SessionData = {
 		header: sm.getHeader(),

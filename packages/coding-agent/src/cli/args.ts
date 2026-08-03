@@ -20,6 +20,8 @@ export interface Args {
 	resume?: boolean;
 	help?: boolean;
 	version?: boolean;
+	/** Print machine-readable capability report (JSON) and exit. */
+	capabilities?: boolean;
 	mode?: Mode;
 	name?: string;
 	noSession?: boolean;
@@ -75,6 +77,8 @@ export function parseArgs(args: string[]): Args {
 			result.help = true;
 		} else if (arg === "--version" || arg === "-v") {
 			result.version = true;
+		} else if (arg === "--capabilities") {
+			result.capabilities = true;
 		} else if (arg === "--mode" && i + 1 < args.length) {
 			const mode = args[++i];
 			if (mode === "text" || mode === "json" || mode === "rpc") {
@@ -277,6 +281,11 @@ ${chalk.bold("Options:")}
   --offline                      Disable startup network operations (same as PI_OFFLINE=1)
   --help, -h                     Show this help
   --version, -v                  Show version number
+  --capabilities                 Print machine-readable capability report (JSON) and exit
+
+Session files are guarded by an exclusive write lease: a session that is open
+in another Pi process cannot be opened for writing (open-elsewhere error);
+stale leases from crashed processes are reclaimed automatically.
 
 Extensions can register additional flags (e.g., --plan from plan-mode extension).${extensionFlagsText}
 

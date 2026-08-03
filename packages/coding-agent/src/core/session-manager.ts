@@ -1,20 +1,22 @@
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import { type ImageContent, type Message, type TextContent, type Usage, uuidv7 } from "@earendil-works/pi-ai";
-import { randomUUID } from "crypto";
+import { randomBytes, randomUUID } from "crypto";
 import {
 	appendFileSync,
 	closeSync,
 	createReadStream,
 	existsSync,
+	fsyncSync,
 	mkdirSync,
 	openSync,
 	readdirSync,
 	readSync,
+	renameSync,
 	statSync,
 	writeFileSync,
 } from "fs";
 import { readdir, stat } from "fs/promises";
-import { join, resolve } from "path";
+import { basename, dirname, join, resolve } from "path";
 import { createInterface } from "readline";
 import { StringDecoder } from "string_decoder";
 import { getAgentDir as getDefaultAgentDir, getSessionsDir } from "../config.ts";
@@ -26,6 +28,7 @@ import {
 	createCompactionSummaryMessage,
 	createCustomMessage,
 } from "./messages.ts";
+import { acquireSessionLease, type SessionLease } from "./session-lease.ts";
 
 export const CURRENT_SESSION_VERSION = 3;
 
@@ -851,7 +854,58 @@ async function listSessionsFromDir(
  *
  * Use buildSessionContext() to get the resolved message list for the LLM, which
  * handles compaction summaries and follows the path from root to current leaf.
+ *
+ * Write ownership: every persisted SessionManager holds the advisory exclusive
+ * session write lease (see session-lease.ts) for `(session directory, session
+ * id)` from the moment the session identity is established until dispose() or
+ * the next identity switch. A second writer process fails with
+ * SessionLeaseConflictError instead of silently opening the same file.
  */
+
+/**
+ * Whole-file replacement that is safe for concurrent readers: write the
+ * complete content to a 0600 temporary file in the same directory, fsync it,
+ * atomically rename it over the destination, then fsync the directory.
+ * Readers that already opened the old inode keep the old complete version;
+ * new readers see the new complete version.
+ */
+function writeFileAtomicSync(filePath: string, data: string): void {
+	const dir = dirname(filePath);
+	const tmp = join(dir, `.${basename(filePath)}.${process.pid}.${randomBytes(6).toString("hex")}.tmp`);
+	const fd = openSync(tmp, "wx", 0o600);
+	try {
+		writeFileSync(fd, data);
+		fsyncSync(fd);
+	} finally {
+		closeSync(fd);
+	}
+	renameSync(tmp, filePath);
+	try {
+		const dfd = openSync(dir, "r");
+		try {
+			fsyncSync(dfd);
+		} finally {
+			closeSync(dfd);
+		}
+	} catch {
+		// Directory fsync is best-effort (unsupported on some filesystems).
+	}
+}
+
+/** Derive a session id from a `<timestamp>_<id>.jsonl` or `<id>.jsonl` basename. */
+function sessionIdFromBasename(filePath: string): string | undefined {
+	const name = basename(filePath);
+	if (!name.endsWith(".jsonl")) return undefined;
+	const stem = name.slice(0, -".jsonl".length);
+	const lastUnderscore = stem.lastIndexOf("_");
+	const candidate = lastUnderscore >= 0 ? stem.slice(lastUnderscore + 1) : stem;
+	try {
+		assertValidSessionId(candidate);
+		return candidate;
+	} catch {
+		return undefined;
+	}
+}
 export class SessionManager {
 	private sessionId: string = "";
 	private sessionFile: string | undefined;
@@ -864,6 +918,10 @@ export class SessionManager {
 	private labelsById: Map<string, string> = new Map();
 	private labelTimestampsById: Map<string, string> = new Map();
 	private leafId: string | null = null;
+	/** Exclusive write lease for (session directory, session id); persisted writers only. */
+	private lease: SessionLease | null = null;
+	/** Read-only managers never acquire the lease and never write (export/inspect). */
+	private readonly readOnly: boolean;
 
 	private constructor(
 		cwd: string,
@@ -872,74 +930,175 @@ export class SessionManager {
 		persist: boolean,
 		newSessionOptions?: NewSessionOptions,
 		preloadedFileEntries?: FileEntry[],
+		readOnly = false,
 	) {
 		this.cwd = resolvePath(cwd);
 		this.sessionDir = normalizePath(sessionDir);
 		this.persist = persist;
-		if (persist && this.sessionDir && !existsSync(this.sessionDir)) {
+		this.readOnly = readOnly;
+		if (persist && !readOnly && this.sessionDir && !existsSync(this.sessionDir)) {
 			mkdirSync(this.sessionDir, { recursive: true });
 		}
 
-		if (sessionFile) {
-			this._setSessionFile(sessionFile, preloadedFileEntries);
-		} else {
-			this.newSession(newSessionOptions);
+		try {
+			if (sessionFile) {
+				this._setSessionFile(sessionFile, preloadedFileEntries);
+			} else {
+				this.newSession(newSessionOptions);
+			}
+		} catch (error) {
+			// A failed open must not leak a partially acquired lease for the
+			// life of the process (the exit hook is only a backstop).
+			this.dispose();
+			throw error;
 		}
+	}
+
+	/**
+	 * Acquire the write lease for a session identity WITHOUT disturbing the
+	 * currently held lease. Callers either commit it via adoptLease() once
+	 * the rest of the switch has succeeded, or release it on failure — so an
+	 * "open elsewhere" conflict never leaves the manager in a mixed state
+	 * (new file path, old lease). Returns null for in-memory or read-only
+	 * managers. Throws SessionLeaseConflictError when another live process
+	 * holds the lease.
+	 */
+	private acquireLeaseHandle(sessionDir: string, sessionId: string, sessionFile?: string): SessionLease | null {
+		if (!this.persist || this.readOnly) return null;
+		return acquireSessionLease({ sessionDir, sessionId, sessionFile });
+	}
+
+	/** Adopt a previously acquired lease handle, releasing the previous one. */
+	private adoptLease(handle: SessionLease | null): void {
+		const previous = this.lease;
+		this.lease = handle;
+		previous?.release();
+	}
+
+	private assertWritable(): void {
+		if (this.readOnly) {
+			throw new Error("SessionManager is read-only");
+		}
+	}
+
+	/** Release the session write lease. Idempotent. */
+	dispose(): void {
+		const previous = this.lease;
+		this.lease = null;
+		previous?.release();
 	}
 
 	/** Switch to a different session file (used for resume and branching) */
 	setSessionFile(sessionFile: string): void {
+		this.assertWritable();
 		this._setSessionFile(sessionFile);
 	}
 
 	private _setSessionFile(sessionFile: string, preloadedFileEntries?: FileEntry[]): void {
-		this.sessionFile = resolvePath(sessionFile);
-		if (existsSync(this.sessionFile)) {
-			this.fileEntries = preloadedFileEntries ?? loadEntriesFromFile(this.sessionFile);
-
-			// If file was empty, initialize it with a valid session header. If it was
-			// non-empty but did not parse as a pi session, fail without modifying it.
-			if (this.fileEntries.length === 0) {
-				const explicitPath = this.sessionFile;
-				if (statSync(explicitPath).size > 0) {
-					throw new Error(`Session file is not a valid pi session: ${explicitPath}`);
+		const explicitPath = resolvePath(sessionFile);
+		const explicitDir = dirname(explicitPath);
+		if (existsSync(explicitPath)) {
+			// Determine the session id and acquire the write lease BEFORE
+			// mutating any manager state, so a lease conflict (open
+			// elsewhere) leaves the current session fully intact. The bounded
+			// header scan yields the id without reading the whole file; a
+			// scan-limit overflow falls back to locking after the full load.
+			let scannedId: string | undefined;
+			if (preloadedFileEntries) {
+				const header = preloadedFileEntries.find((e) => e.type === "session") as SessionHeader | undefined;
+				scannedId = header?.id;
+			} else {
+				let header: SessionHeader | null = null;
+				try {
+					header = statSync(explicitPath).size > 0 ? readSessionHeader(explicitPath) : null;
+				} catch (error) {
+					if (!(error instanceof SessionHeaderScanLimitError)) throw error;
 				}
-				this.newSession();
+				scannedId = header?.id;
+			}
+			let pendingLease = scannedId ? this.acquireLeaseHandle(explicitDir, scannedId, explicitPath) : null;
+
+			try {
+				const fileEntries = preloadedFileEntries ?? loadEntriesFromFile(explicitPath);
+
+				// If file was empty, initialize it with a valid session header.
+				// If it was non-empty but did not parse as a pi session, fail
+				// without modifying it.
+				if (fileEntries.length === 0) {
+					if (this.readOnly) {
+						throw new Error(`Session file is not a valid pi session: ${explicitPath}`);
+					}
+					if (statSync(explicitPath).size > 0) {
+						throw new Error(`Session file is not a valid pi session: ${explicitPath}`);
+					}
+					// Keep the filename and the header id aligned so the lease
+					// key matches for every process opening this exact path.
+					const id = sessionIdFromBasename(explicitPath) ?? createSessionId();
+					if (id !== scannedId) {
+						const rekeyed = this.acquireLeaseHandle(explicitDir, id, explicitPath);
+						pendingLease?.release();
+						pendingLease = rekeyed;
+					}
+					this.resetToNewSessionState(id, new Date().toISOString());
+					this.sessionFile = explicitPath;
+					this.adoptLease(pendingLease);
+					pendingLease = null;
+					this._rewriteFile();
+					this.flushed = true;
+					return;
+				}
+
+				const header = fileEntries.find((e) => e.type === "session") as SessionHeader | undefined;
+				const loadedId = header?.id ?? scannedId ?? createSessionId();
+				if (loadedId !== scannedId) {
+					// Header-scan-limit fallback (locked after the full load).
+					const rekeyed = this.acquireLeaseHandle(explicitDir, loadedId, explicitPath);
+					pendingLease?.release();
+					pendingLease = rekeyed;
+				}
+
 				this.sessionFile = explicitPath;
-				this._rewriteFile();
+				this.fileEntries = fileEntries;
+				this.sessionId = loadedId;
+				this.adoptLease(pendingLease);
+				pendingLease = null;
+
+				if (migrateToCurrentVersion(this.fileEntries) && !this.readOnly) {
+					this._rewriteFile();
+				}
+
+				this._buildIndex();
 				this.flushed = true;
-				return;
+			} catch (error) {
+				pendingLease?.release();
+				throw error;
 			}
-
-			const header = this.fileEntries.find((e) => e.type === "session") as SessionHeader | undefined;
-			this.sessionId = header?.id ?? createSessionId();
-
-			if (migrateToCurrentVersion(this.fileEntries)) {
-				this._rewriteFile();
-			}
-
-			this._buildIndex();
-			this.flushed = true;
 		} else {
-			const explicitPath = this.sessionFile;
-			this.newSession();
+			if (this.readOnly) {
+				throw new Error(`File not found: ${explicitPath}`);
+			}
+			// The file will live at the explicit path, not necessarily in
+			// getSessionDir(): lock that real directory, and keep the filename
+			// id and header id aligned so every process opening this path uses
+			// the same lease key. Acquire before mutating any state.
+			const id = sessionIdFromBasename(explicitPath) ?? createSessionId();
+			const pendingLease = this.acquireLeaseHandle(explicitDir, id, explicitPath);
+			this.resetToNewSessionState(id, new Date().toISOString());
 			this.sessionFile = explicitPath; // preserve explicit path from --session flag
+			this.adoptLease(pendingLease);
 		}
 	}
 
-	newSession(options?: NewSessionOptions): string | undefined {
-		if (options?.id !== undefined) {
-			assertValidSessionId(options.id);
-		}
-		this.sessionId = options?.id ?? createSessionId();
-		const timestamp = new Date().toISOString();
+	/** Reset in-memory state to a fresh session (no lease, no file path changes). */
+	private resetToNewSessionState(id: string, timestamp: string, parentSession?: string): void {
+		this.sessionId = id;
 		const header: SessionHeader = {
 			type: "session",
 			version: CURRENT_SESSION_VERSION,
-			id: this.sessionId,
+			id,
 			timestamp,
 			cwd: this.cwd,
-			parentSession: options?.parentSession,
+			parentSession,
 		};
 		this.fileEntries = [header];
 		this.byId.clear();
@@ -947,11 +1106,31 @@ export class SessionManager {
 		this.labelTimestampsById.clear();
 		this.leafId = null;
 		this.flushed = false;
+	}
 
+	newSession(options?: NewSessionOptions): string | undefined {
+		this.assertWritable();
+		if (options?.id !== undefined) {
+			assertValidSessionId(options.id);
+		}
+		const id = options?.id ?? createSessionId();
+		const timestamp = new Date().toISOString();
+
+		// Acquire the write lease before mutating any state, so a conflict
+		// leaves the current session fully intact.
+		let pendingLease: SessionLease | null = null;
+		let newSessionFile: string | undefined;
 		if (this.persist) {
 			const fileTimestamp = timestamp.replace(/[:.]/g, "-");
-			this.sessionFile = join(this.getSessionDir(), `${fileTimestamp}_${this.sessionId}.jsonl`);
+			newSessionFile = join(this.getSessionDir(), `${fileTimestamp}_${id}.jsonl`);
+			pendingLease = this.acquireLeaseHandle(this.getSessionDir(), id, newSessionFile);
 		}
+
+		this.resetToNewSessionState(id, timestamp, options?.parentSession);
+		if (this.persist) {
+			this.sessionFile = newSessionFile;
+		}
+		this.adoptLease(pendingLease);
 		return this.sessionFile;
 	}
 
@@ -977,15 +1156,13 @@ export class SessionManager {
 	}
 
 	private _rewriteFile(): void {
+		this.assertWritable();
 		if (!this.persist || !this.sessionFile) return;
-		const fd = openSync(this.sessionFile, "w");
-		try {
-			for (const entry of this.fileEntries) {
-				writeFileSync(fd, `${JSON.stringify(entry)}\n`);
-			}
-		} finally {
-			closeSync(fd);
+		let content = "";
+		for (const entry of this.fileEntries) {
+			content += `${JSON.stringify(entry)}\n`;
 		}
+		writeFileAtomicSync(this.sessionFile, content);
 	}
 
 	isPersisted(): boolean {
@@ -1013,6 +1190,7 @@ export class SessionManager {
 	}
 
 	_persist(entry: SessionEntry): void {
+		this.assertWritable();
 		if (!this.persist || !this.sessionFile) return;
 
 		const hasAssistant = this.fileEntries.some((e) => e.type === "message" && e.message.role === "assistant");
@@ -1027,14 +1205,14 @@ export class SessionManager {
 		}
 
 		if (!this.flushed) {
-			const fd = openSync(this.sessionFile, "wx");
-			try {
-				for (const e of this.fileEntries) {
-					writeFileSync(fd, `${JSON.stringify(e)}\n`);
-				}
-			} finally {
-				closeSync(fd);
+			// First durable write of the session: atomic whole-file create so
+			// readers never observe a partial file (the write lease we hold
+			// already guarantees no other Pi writer).
+			let content = "";
+			for (const e of this.fileEntries) {
+				content += `${JSON.stringify(e)}\n`;
 			}
+			writeFileAtomicSync(this.sessionFile, content);
 			this.flushed = true;
 		} else {
 			appendFileSync(this.sessionFile, `${JSON.stringify(entry)}\n`);
@@ -1410,6 +1588,7 @@ export class SessionManager {
 	 * Returns the new session file path, or undefined if not persisting.
 	 */
 	createBranchedSession(leafId: string): string | undefined {
+		this.assertWritable();
 		const previousSessionFile = this.sessionFile;
 		const path = this.getBranch(leafId);
 		if (path.length === 0) {
@@ -1451,6 +1630,10 @@ export class SessionManager {
 		}
 
 		if (this.persist) {
+			// Acquire the write lease for the branched session identity before
+			// mutating any state; a conflict leaves the current session intact.
+			const pendingLease = this.acquireLeaseHandle(this.getSessionDir(), newSessionId, newSessionFile);
+
 			// Build label entries
 			const lastEntryId = pathWithoutLabels[pathWithoutLabels.length - 1]?.id || null;
 			let parentId = lastEntryId;
@@ -1472,6 +1655,9 @@ export class SessionManager {
 			this.fileEntries = [header, ...pathWithoutLabels, ...labelEntries];
 			this.sessionId = newSessionId;
 			this.sessionFile = newSessionFile;
+			// Commit the lease switch to the branched session identity before
+			// any write of the new file; the previous session's lease is released.
+			this.adoptLease(pendingLease);
 			this._buildIndex();
 
 			// Only write the file now if it contains an assistant message.
@@ -1550,6 +1736,33 @@ export class SessionManager {
 	}
 
 	/**
+	 * Open a session file for reading only (export/inspect). Never acquires the
+	 * write lease and never writes: version migrations are applied in memory
+	 * only, and every mutating method throws. Safe to use on sessions that are
+	 * open in another process; the append-only JSONL format plus atomic
+	 * rewrites guarantee readers see complete JSON lines (an incomplete final
+	 * record is ignored).
+	 */
+	static openReadOnly(path: string, cwdOverride?: string): SessionManager {
+		const resolvedPath = resolvePath(path);
+		let header: SessionHeader | null = null;
+		let preloadedFileEntries: FileEntry[] | undefined;
+		if (cwdOverride === undefined && existsSync(resolvedPath)) {
+			try {
+				header = readSessionHeader(resolvedPath);
+			} catch (error) {
+				if (!(error instanceof SessionHeaderScanLimitError)) throw error;
+				preloadedFileEntries = loadEntriesFromFile(resolvedPath);
+				const firstEntry = preloadedFileEntries[0];
+				header = firstEntry?.type === "session" ? firstEntry : null;
+			}
+		}
+		const cwd = cwdOverride ?? (header ? getSessionHeaderCwd(header) : undefined) ?? process.cwd();
+		const dir = resolve(resolvedPath, "..");
+		return new SessionManager(cwd, dir, resolvedPath, true, undefined, preloadedFileEntries, true);
+	}
+
+	/**
 	 * Continue the most recent session, or create new if none.
 	 * @param cwd Working directory
 	 * @param sessionDir Optional session directory. If omitted, uses default (~/.pi/agent/sessions/<encoded-cwd>/).
@@ -1608,6 +1821,9 @@ export class SessionManager {
 		const fileTimestamp = timestamp.replace(/[:.]/g, "-");
 		const newSessionFile = join(dir, `${fileTimestamp}_${newSessionId}.jsonl`);
 
+		// Lock the new session identity before creating its file.
+		const lease = acquireSessionLease({ sessionDir: dir, sessionId: newSessionId, sessionFile: newSessionFile });
+
 		// Write new header pointing to source as parent, with updated cwd
 		const newHeader: SessionHeader = {
 			type: "session",
@@ -1617,16 +1833,32 @@ export class SessionManager {
 			cwd: resolvedTargetCwd,
 			parentSession: resolvedSourcePath,
 		};
-		writeFileSync(newSessionFile, `${JSON.stringify(newHeader)}\n`, { flag: "wx" });
 
-		// Copy all non-header entries from source
-		for (const entry of sourceEntries) {
-			if (entry.type !== "session") {
-				appendFileSync(newSessionFile, `${JSON.stringify(entry)}\n`);
-			}
+		if (existsSync(newSessionFile)) {
+			lease.release();
+			throw new Error(`Cannot fork: session file already exists: ${newSessionFile}`);
 		}
 
-		return new SessionManager(resolvedTargetCwd, dir, newSessionFile, true);
+		// Single atomic whole-file create: readers never observe a partial copy.
+		let content = `${JSON.stringify(newHeader)}\n`;
+		for (const entry of sourceEntries) {
+			if (entry.type !== "session") {
+				content += `${JSON.stringify(entry)}\n`;
+			}
+		}
+		try {
+			writeFileAtomicSync(newSessionFile, content);
+		} catch (error) {
+			lease.release();
+			throw error;
+		}
+
+		try {
+			return new SessionManager(resolvedTargetCwd, dir, newSessionFile, true);
+		} finally {
+			// The manager holds its own lease handle now (re-entrant acquire).
+			lease.release();
+		}
 	}
 
 	/**

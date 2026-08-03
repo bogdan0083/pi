@@ -220,6 +220,20 @@ export {
 	type PromptTemplate,
 } from "./core/sdk.ts";
 export {
+	acquireSessionLease,
+	getBootId,
+	inspectSessionLease,
+	readLeaseMetadata,
+	type SessionLease,
+	SessionLeaseConflictError,
+	type SessionLeaseInspection,
+	type SessionLeaseMetadata,
+	type SessionLeaseOwner,
+	sessionLeaseKey,
+	sessionLeaseLockDir,
+	sessionLocksBaseDir,
+} from "./core/session-lease.ts";
+export {
 	type BranchSummaryEntry,
 	buildContextEntries,
 	buildSessionContext,
