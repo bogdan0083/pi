@@ -135,7 +135,8 @@ export interface AsrProjectProfile {
 
 /**
  * Global hard words and preferred spellings applied to every session —
- * terms ASR tends to mangle that are common across Foquz projects.
+ * terms ASR tends to mangle that are common across Foquz projects and the
+ * Pi coding agent itself.
  *
  * The spoken form used for hotwords is derived automatically (hyphens and
  * camelCase become words: "poll-vue-app" → "poll vue app",
@@ -150,6 +151,7 @@ export const GLOBAL_VOCABULARY = [
   "foquz-quiz",
   "foquz-ui",
   "poll-vue-app",
+  "pi-coding-agent",
   "foquz-frontend-vue",
   "devfoquz",
   "doxsw",

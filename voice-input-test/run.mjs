@@ -277,6 +277,7 @@ console.log("project context: selects a trusted foquz-core Git repository and it
     eq(hotwords["foquz"], 4, "plain term keeps the normal hotword weight");
     eq(hotwords["foquz question"], 50, "camelCase term boosted via its spoken form");
     eq(hotwords["poll vue app"], 50, "hyphenated identifier boosted via its spoken form");
+    eq(hotwords["pi coding agent"], 50, "pi coding agent boosted via its spoken form");
     eq(
       Object.keys(hotwords).length,
       new Set(GLOBAL_VOCABULARY.map(spokenFormOf)).size,
@@ -305,9 +306,17 @@ console.log("global profile: hard-word vocabulary applies to every session");
   ok(merged.vocabulary.length >= GLOBAL_VOCABULARY.length, "merged vocabulary is global + project");
 
   const globalMessages = buildAsrContextMessages(GLOBAL_ASR_PROFILE);
-  eq(globalMessages.length, 1, "global profile alone produces a single term-list turn");
+  ok(
+    globalMessages.length >= 1 && globalMessages.length <= 4,
+    "global profile term list fits the documented 4-turn budget",
+  );
+  ok(
+    globalMessages.every((m) => m.content[0].text.length <= 400),
+    "each global term turn within the 400-char limit",
+  );
   const globalText = globalMessages.map((m) => m.content[0].text).join("\n");
   ok(globalText.includes("poll-vue-app (poll vue app)"), "written and spoken forms both in context");
+  ok(globalText.includes("pi-coding-agent (pi coding agent)"), "pi coding agent in context turns");
   ok(globalText.includes("foquz-core"), "global vocabulary terms reach the context turns");
   ok(globalText.includes("knockout"), "global vocabulary includes knockout");
   ok(!globalText.includes("PHP 8.2"), "no foquz-core-specific description in the global profile");
@@ -371,6 +380,7 @@ console.log("transcription: sends the global profile merged with foquz-core as D
     eq(payload.parameters.vocabulary["foquz"], 4, "inline hotword for foquz");
     eq(payload.parameters.vocabulary["foquz question"], 50, "camelCase term boosted via spoken hotword");
     eq(payload.parameters.vocabulary["poll vue app"], 50, "hyphenated identifier boosted via spoken hotword");
+    eq(payload.parameters.vocabulary["pi coding agent"], 50, "pi coding agent boosted via spoken hotword");
     ok(payload.messages === undefined, "no chat-completions messages shape");
     ok(payload.temperature === undefined, "no temperature parameter");
     ok(payload.reasoning === undefined, "no reasoning parameter");
@@ -413,6 +423,11 @@ console.log("spoken forms: recognized speech normalized to canonical spellings")
     applySpokenFormMap("show me the poll vue app repo"),
     "show me the poll-vue-app repo",
     "spoken form normalized to canonical spelling",
+  );
+  eq(
+    applySpokenFormMap("open the pi coding agent docs"),
+    "open the pi-coding-agent docs",
+    "pi coding agent normalized to its canonical spelling",
   );
   eq(applySpokenFormMap("the foquz core backend"), "the foquz-core backend", "hyphenated term normalized");
   eq(applySpokenFormMap("plain prose stays untouched"), "plain prose stays untouched", "no rewrite without a match");
