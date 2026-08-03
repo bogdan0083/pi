@@ -53,8 +53,8 @@
  * Transcript cleanup: the transcript is refined in two stages before
  * insertion.
  *
- * Stage 1 — LLM refinement (OpenRouter · Gemini 2.5 Flash Lite): the raw
- * text is posted to google/gemini-2.5-flash-lite on OpenRouter with
+ * Stage 1 — LLM refinement (OpenRouter · Gemini 3.5 Flash Lite): the raw
+ * text is posted to google/gemini-3.5-flash-lite on OpenRouter with
  * deletion-only instructions that remove repeated words and sentences,
  * stutters, false starts, and ASR repetition loops while preserving
  * punctuation, numbers, and code identifiers. Best-effort: it is skipped
@@ -78,7 +78,7 @@
  * the foquz-core description) is uploaded only while working in that
  * repository. The local cwd itself is never uploaded. For the LLM
  * refinement stage, the raw transcript text is additionally sent to
- * OpenRouter, which forwards it to Google (Gemini 2.5 Flash Lite); audio
+ * OpenRouter, which forwards it to Google (Gemini 3.5 Flash Lite); audio
  * is never sent there. Without OPENROUTER_API_KEY nothing is uploaded for
  * cleanup. Generated transcripts are treated like normal chat messages.
  *
@@ -375,8 +375,8 @@ const REQUEST_TIMEOUT_MS = 120_000; // Doc §4/§8: 120 s request timeout.
 const RETRYABLE_STATUS = new Set([408, 429, 500, 502, 503, 504]);
 const STATUS_KEY = "voice-input";
 
-// LLM transcript refinement (OpenRouter · Gemini 2.5 Flash Lite).
-const REFINEMENT_MODEL = "google/gemini-2.5-flash-lite";
+// LLM transcript refinement (OpenRouter · Gemini 3.5 Flash Lite).
+const REFINEMENT_MODEL = "google/gemini-3.5-flash-lite";
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const OPENROUTER_CHAT_PATH = "/chat/completions";
 /** Utterances shorter than this cannot contain sentence-level repeats. */
@@ -630,7 +630,7 @@ export class PushToTalk {
     let text = "";
     try {
       text = await this.effects.transcribe(path);
-      // LLM refinement (OpenRouter · Gemini 2.5 Flash Lite): removes repeated
+      // LLM refinement (OpenRouter · Gemini 3.5 Flash Lite): removes repeated
       // words/sentences, stutters, false starts, and ASR repetition loops.
       // Best-effort — falls back to the raw transcript; the deterministic
       // pass in insertTranscript still applies afterwards.
@@ -830,7 +830,7 @@ export async function transcribeAudio(
   throw new Error("Transcription failed after retries.");
 }
 
-// ─── LLM transcript refinement (OpenRouter · Gemini 2.5 Flash Lite) ─────────
+// ─── LLM transcript refinement (OpenRouter · Gemini 3.5 Flash Lite) ─────────
 
 /**
  * Deletion-only instructions for the refinement stage: the model may remove
@@ -906,7 +906,7 @@ export function extractRefinementText(json: unknown): string | null {
 
 /**
  * Best-effort LLM refinement of a transcript via OpenRouter chat
- * completions (Google Gemini 2.5 Flash Lite). Total function: it never
+ * completions (Google Gemini 3.5 Flash Lite). Total function: it never
  * throws and returns the input unchanged when the key is missing, the
  * transcript is too short to contain repeats, the call fails, or the model
  * returns nothing usable. Dictation must never depend on this stage.

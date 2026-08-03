@@ -473,7 +473,7 @@ console.log("cleanTranscript: deterministic filler removal and tidying");
   eq(prepareTranscriptForInsert("   \n"), null, "blank → no speech");
 }
 
-console.log("refinement: Gemini 2.5 Flash Lite prompt and response parsing");
+console.log("refinement: Gemini 3.5 Flash Lite prompt and response parsing");
 {
   ok(
     REFINEMENT_SYSTEM_PROMPT.includes("Only delete") &&
@@ -555,7 +555,7 @@ console.log("refinement: OpenRouter request shape, success, and failure fallback
     eq(request.options.method, "POST", "POST request used");
     eq(request.options.headers.Authorization, "Bearer test-key", "API key sent");
     const payload = JSON.parse(request.options.body);
-    eq(payload.model, "google/gemini-2.5-flash-lite", "Gemini 2.5 Flash Lite model selected");
+    eq(payload.model, "google/gemini-3.5-flash-lite", "Gemini 3.5 Flash Lite model selected");
     eq(payload.temperature, 0, "temperature 0");
     ok(payload.max_tokens >= 512, "generous output budget");
     eq(payload.messages[0].role, "system", "system message first");

@@ -1,5 +1,5 @@
 // One-shot smoke test: refine a real transcript through OpenRouter (Gemini
-// 2.5 Flash Lite) using the exact code path the extension uses (stubbing the
+// 3.5 Flash Lite) using the exact code path the extension uses (stubbing the
 // agent package only), then run the deterministic pass that would precede
 // insertion. Makes one tiny paid call; the default sample costs fractions of
 // a cent.
