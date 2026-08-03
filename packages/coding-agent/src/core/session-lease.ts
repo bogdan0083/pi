@@ -171,7 +171,7 @@ export function canonicalizeSessionDir(sessionDir: string): string {
 }
 
 export function sessionLeaseKey(sessionDir: string, sessionId: string): string {
-	return createHash("sha256").update(`${sessionDir}${sessionId}`).digest("hex");
+	return createHash("sha256").update(`${sessionDir}\0${sessionId}`).digest("hex");
 }
 
 export function sessionLocksBaseDir(agentDir: string = getAgentDir()): string {
