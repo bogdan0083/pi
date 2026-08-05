@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { hostname, platform } from "node:os";
 import { join, resolve } from "node:path";
 import { getAgentDir } from "../config.ts";
@@ -45,6 +45,8 @@ export interface SessionLeaseMetadata {
 	/** Optional pi-remote orchestration identity. */
 	launchId?: string;
 	runtimeId?: string;
+	/** Runtime directory used by the local pi-remote handoff command. */
+	runtimeDir?: string;
 }
 
 export interface SessionLeaseOwner {
@@ -56,6 +58,7 @@ export interface SessionLeaseOwner {
 	sessionFile?: string;
 	launchId?: string;
 	runtimeId?: string;
+	runtimeDir?: string;
 }
 
 /** Thrown when another live process holds the session write lease. */
@@ -66,7 +69,7 @@ export class SessionLeaseConflictError extends Error {
 		super(
 			`Session '${owner.sessionId}' is already open in another Pi process ` +
 				`(pid ${owner.pid} on ${owner.hostname}, since ${owner.acquiredAt}). ` +
-				`Close that process first. If it crashed, the lease is reclaimed automatically.`,
+				`Close that process first. If it crashed, a verifiable lease is reclaimed automatically.`,
 		);
 		this.name = "SessionLeaseConflictError";
 		this.owner = owner;
@@ -194,13 +197,23 @@ export function readLeaseMetadata(lockDir: string): SessionLeaseMetadata | null 
 	try {
 		const raw = JSON.parse(readFileSync(metadataPath(lockDir), "utf8")) as Partial<SessionLeaseMetadata>;
 		if (raw.formatVersion !== SESSION_LEASE_FORMAT_VERSION) return null;
-		if (typeof raw.pid !== "number" || typeof raw.sessionId !== "string" || typeof raw.sessionDir !== "string") {
+		if (
+			typeof raw.pid !== "number" ||
+			typeof raw.sessionId !== "string" ||
+			typeof raw.sessionDir !== "string" ||
+			typeof raw.token !== "string" ||
+			raw.token.length === 0
+		) {
 			return null;
 		}
 		return raw as SessionLeaseMetadata;
 	} catch {
 		return null;
 	}
+}
+
+function metadataMatchesLease(meta: SessionLeaseMetadata, sessionDir: string, sessionId: string): boolean {
+	return meta.sessionId === sessionId && canonicalizeSessionDir(meta.sessionDir) === sessionDir;
 }
 
 function toOwner(meta: SessionLeaseMetadata): SessionLeaseOwner {
@@ -213,6 +226,7 @@ function toOwner(meta: SessionLeaseMetadata): SessionLeaseOwner {
 		sessionFile: meta.sessionFile,
 		launchId: meta.launchId,
 		runtimeId: meta.runtimeId,
+		runtimeDir: meta.runtimeDir,
 	};
 }
 
@@ -242,30 +256,38 @@ function installExitHook(): void {
 	process.on("exit", releaseAllAtExit);
 }
 
-function removeLockDirIfOwned(lockDir: string, token: string): void {
+/**
+ * Incomplete acquisition directories are never reclaimed automatically.
+ * There is no owner token to validate, so a delayed writer could otherwise
+ * resume after reclamation and overwrite a replacement owner's metadata.
+ */
+function uniqueQuarantineDir(lockDir: string): string {
+	return `${lockDir}.reclaim-${process.pid}-${randomBytes(8).toString("hex")}`;
+}
+
+function restoreQuarantinedLock(lockDir: string, quarantineDir: string): void {
 	try {
-		const meta = readLeaseMetadata(lockDir);
-		if (meta && meta.token !== token) return; // reacquired by someone else
-		rmSync(lockDir, { recursive: true, force: true });
+		renameSync(quarantineDir, lockDir);
 	} catch {
-		// best effort; a stale remnant is recovered by the next acquirer
+		// A replacement owner may already have acquired lockDir. Keep the
+		// quarantined directory rather than overwriting that owner.
 	}
 }
 
-/**
- * A lock directory without readable metadata is an incomplete acquisition
- * (crash between mkdir and metadata write). It is reclaimed only after a
- * short grace window; this is not age-based staleness of a valid lease.
- */
-const INCOMPLETE_ACQUIRE_GRACE_MS = 30_000;
-
-function tryReclaimIncompleteLock(lockDir: string): boolean {
+/** Remove a valid lock only after atomically moving it and rechecking its token. */
+function removeLockDirIfOwned(lockDir: string, token: string): boolean {
+	const quarantineDir = uniqueQuarantineDir(lockDir);
 	try {
-		const age = Date.now() - statSync(lockDir).mtimeMs;
-		if (age < INCOMPLETE_ACQUIRE_GRACE_MS) return false;
-		rmSync(lockDir, { recursive: true, force: true });
+		renameSync(lockDir, quarantineDir);
+		const meta = readLeaseMetadata(quarantineDir);
+		if (!meta || meta.token !== token) {
+			restoreQuarantinedLock(lockDir, quarantineDir);
+			return false;
+		}
+		rmSync(quarantineDir, { recursive: true, force: true });
 		return true;
 	} catch {
+		restoreQuarantinedLock(lockDir, quarantineDir);
 		return false;
 	}
 }
@@ -322,6 +344,7 @@ export function acquireSessionLease(options: AcquireSessionLeaseOptions): Sessio
 		token: randomBytes(16).toString("hex"),
 		launchId: process.env.PI_REMOTE_LAUNCH_ID || undefined,
 		runtimeId: process.env.PI_REMOTE_RUNTIME_ID || undefined,
+		runtimeDir: process.env.PI_REMOTE_RUNTIME_DIR || undefined,
 	};
 
 	for (let attempt = 0; attempt < 2; attempt++) {
@@ -352,8 +375,19 @@ export function acquireSessionLease(options: AcquireSessionLeaseOptions): Sessio
 			if ((err as NodeJS.ErrnoException).code !== "EEXIST") throw err;
 			const existing = readLeaseMetadata(lockDir);
 			if (!existing) {
-				if (existsSync(lockDir) && tryReclaimIncompleteLock(lockDir)) continue;
-				// Unknown owner, possibly still starting: fail closed.
+				// Unknown/incomplete owner: fail closed. Reclaiming by age is
+				// unsafe because a delayed writer could overwrite a replacement.
+				throw new SessionLeaseConflictError({
+					pid: 0,
+					hostname: "unknown",
+					acquiredAt: "unknown",
+					sessionId: options.sessionId,
+					sessionDir,
+				});
+			}
+			if (!metadataMatchesLease(existing, sessionDir, options.sessionId)) {
+				// The lock directory and its metadata disagree. Never attribute or
+				// reclaim a lock that may belong to another session.
 				throw new SessionLeaseConflictError({
 					pid: 0,
 					hostname: "unknown",
@@ -424,7 +458,7 @@ export function inspectSessionLease(sessionDir: string, sessionId: string, agent
 	const lockDir = sessionLeaseLockDir(canonical, sessionId, agentDir);
 	if (!existsSync(lockDir)) return { status: "free" };
 	const meta = readLeaseMetadata(lockDir);
-	if (!meta) return { status: "held" }; // unknown owner: fail closed
+	if (!meta || !metadataMatchesLease(meta, canonical, sessionId)) return { status: "held" }; // unknown owner: fail closed
 	const status = leaseHolderStatus(meta);
 	if (status === "alive") return { status: "held", owner: toOwner(meta) };
 	if (status === "unknown") return { status: "held", owner: toOwner(meta) };

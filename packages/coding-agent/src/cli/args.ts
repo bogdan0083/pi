@@ -285,7 +285,11 @@ ${chalk.bold("Options:")}
 
 Session files are guarded by an exclusive write lease: a session that is open
 in another Pi process cannot be opened for writing (open-elsewhere error);
-stale leases from crashed processes are reclaimed automatically.
+verifiably stale leases from crashed processes are reclaimed automatically.
+When an
+interactive local Pi detects that the owner is a pi-remote runtime, it offers
+to stop that remote runtime and retry locally. This requires pi-remote on
+PATH; set PI_REMOTE_CLI to override its command path.
 
 Extensions can register additional flags (e.g., --plan from plan-mode extension).${extensionFlagsText}
 

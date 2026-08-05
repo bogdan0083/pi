@@ -17,6 +17,11 @@ pi --fork <path|id>    # Fork a session file or partial session ID into a new se
 
 Use `/session` in interactive mode to see the current session file, session ID, message count, tokens, and cost.
 
+If a session is currently open in a pi-remote-managed runtime, interactive
+local Pi offers to stop that remote runtime and retry the open locally. The
+handoff uses `pi-remote stop-session`; keep `pi-remote` on `PATH`, or set
+`PI_REMOTE_CLI` to its executable path.
+
 For the JSONL file format and SessionManager API, see [Session Format](session-format.md).
 
 ## Session Commands

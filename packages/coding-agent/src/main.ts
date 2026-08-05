@@ -22,6 +22,7 @@ import { processFileArguments } from "./cli/file-processor.ts";
 import { buildInitialMessage } from "./cli/initial-message.ts";
 import { listModels } from "./cli/list-models.ts";
 import { createProjectTrustContext } from "./cli/project-trust.ts";
+import { stopRemoteSession } from "./cli/remote-session.ts";
 import { selectSession } from "./cli/session-picker.ts";
 import { shouldRunFirstTimeSetup, showFirstTimeSetup, showStartupSelector } from "./cli/startup-ui.ts";
 import { ENV_SESSION_DIR, expandTildePath, getAgentDir, getPackageDir, VERSION } from "./config.ts";
@@ -46,7 +47,7 @@ import {
 	MissingSessionCwdError,
 	type SessionCwdIssue,
 } from "./core/session-cwd.ts";
-import { SESSION_LEASE_FORMAT_VERSION } from "./core/session-lease.ts";
+import { SESSION_LEASE_FORMAT_VERSION, SessionLeaseConflictError } from "./core/session-lease.ts";
 import { assertValidSessionId, SessionManager } from "./core/session-manager.ts";
 import { SettingsManager } from "./core/settings-manager.ts";
 import { printTimings, resetTimings, time } from "./core/timings.ts";
@@ -251,6 +252,45 @@ async function promptConfirm(message: string): Promise<boolean> {
 	});
 }
 
+function exitWithSessionError(error: unknown): never {
+	const message = error instanceof Error ? error.message : String(error);
+	console.error(chalk.red(`Error: ${message}`));
+	process.exit(1);
+}
+
+/**
+ * Open a session, offering a deliberate local handoff when pi-remote owns it.
+ * The remote runtime is stopped first; the open is retried only after the
+ * remote CLI confirms that its core lease is no longer held.
+ */
+async function withRemoteSessionHandoff<T>(open: () => T, allowHandoff: boolean): Promise<T> {
+	try {
+		return open();
+	} catch (error: unknown) {
+		if (!allowHandoff || !(error instanceof SessionLeaseConflictError) || !error.owner.runtimeId) {
+			return exitWithSessionError(error);
+		}
+
+		const shortRuntimeId = error.owner.runtimeId.slice(0, 8);
+		const shouldStop = await promptConfirm(
+			`Session is open in pi-remote runtime ${shortRuntimeId}. Stop the remote session and continue locally?`,
+		);
+		if (!shouldStop) return exitWithSessionError(error);
+
+		try {
+			await stopRemoteSession(error.owner);
+		} catch (stopError: unknown) {
+			return exitWithSessionError(stopError);
+		}
+		console.log("Remote session stopped; opening it locally.");
+		try {
+			return open();
+		} catch (retryError: unknown) {
+			return exitWithSessionError(retryError);
+		}
+	}
+}
+
 function validateForkFlags(parsed: Args): void {
 	if (!parsed.fork) return;
 
@@ -290,16 +330,6 @@ function validateSessionIdFlags(parsed: Args): void {
 	}
 }
 
-function openSessionOrExit(path: string, sessionDir?: string): SessionManager {
-	try {
-		return SessionManager.open(path, sessionDir);
-	} catch (error: unknown) {
-		const message = error instanceof Error ? error.message : String(error);
-		console.error(chalk.red(`Error: ${message}`));
-		process.exit(1);
-	}
-}
-
 function forkSessionOrExit(sourcePath: string, cwd: string, sessionDir?: string, sessionId?: string): SessionManager {
 	try {
 		return SessionManager.forkFrom(sourcePath, cwd, sessionDir, { id: sessionId });
@@ -315,6 +345,7 @@ async function createSessionManager(
 	cwd: string,
 	sessionDir: string | undefined,
 	settingsManager: SettingsManager,
+	allowRemoteHandoff: boolean,
 ): Promise<SessionManager> {
 	if (parsed.noSession || parsed.help || parsed.listModels !== undefined) {
 		return SessionManager.inMemory(cwd, parsed.sessionId !== undefined ? { id: parsed.sessionId } : undefined);
@@ -349,7 +380,7 @@ async function createSessionManager(
 		switch (resolved.type) {
 			case "path":
 			case "local":
-				return openSessionOrExit(resolved.path, sessionDir);
+				return withRemoteSessionHandoff(() => SessionManager.open(resolved.path, sessionDir), allowRemoteHandoff);
 
 			case "global": {
 				console.log(chalk.yellow(`Session found in different project: ${resolved.cwd}`));
@@ -378,20 +409,23 @@ async function createSessionManager(
 				console.log(chalk.dim("No session selected"));
 				process.exit(0);
 			}
-			return SessionManager.open(selectedPath, sessionDir);
+			return withRemoteSessionHandoff(() => SessionManager.open(selectedPath, sessionDir), allowRemoteHandoff);
 		} finally {
 			stopThemeWatcher();
 		}
 	}
 
 	if (parsed.continue) {
-		return SessionManager.continueRecent(cwd, sessionDir);
+		return withRemoteSessionHandoff(() => SessionManager.continueRecent(cwd, sessionDir), allowRemoteHandoff);
 	}
 
 	if (parsed.sessionId) {
 		const existingSession = await findLocalSessionByExactId(parsed.sessionId, cwd, sessionDir);
 		if (existingSession) {
-			return SessionManager.open(existingSession.path, sessionDir);
+			return withRemoteSessionHandoff(
+				() => SessionManager.open(existingSession.path, sessionDir),
+				allowRemoteHandoff,
+			);
 		}
 		console.error(
 			chalk.yellow(
@@ -400,7 +434,10 @@ async function createSessionManager(
 		);
 	}
 
-	return SessionManager.create(cwd, sessionDir, { id: parsed.sessionId });
+	return withRemoteSessionHandoff(
+		() => SessionManager.create(cwd, sessionDir, { id: parsed.sessionId }),
+		allowRemoteHandoff,
+	);
 }
 
 function buildSessionOptions(
@@ -645,7 +682,8 @@ export async function main(args: string[], options?: MainOptions) {
 		(parsed.sessionDir ? normalizePath(parsed.sessionDir) : undefined) ??
 		(envSessionDir ? expandTildePath(envSessionDir) : undefined) ??
 		startupSettingsManager.getSessionDir();
-	let sessionManager = await createSessionManager(parsed, cwd, sessionDir, startupSettingsManager);
+	const allowRemoteHandoff = appMode === "interactive";
+	let sessionManager = await createSessionManager(parsed, cwd, sessionDir, startupSettingsManager, allowRemoteHandoff);
 	const missingSessionCwdIssue = getMissingSessionCwdIssue(sessionManager, cwd);
 	if (missingSessionCwdIssue) {
 		if (appMode === "interactive") {
@@ -653,7 +691,10 @@ export async function main(args: string[], options?: MainOptions) {
 			if (!selectedCwd) {
 				process.exit(0);
 			}
-			sessionManager = SessionManager.open(missingSessionCwdIssue.sessionFile!, sessionDir, selectedCwd);
+			sessionManager = await withRemoteSessionHandoff(
+				() => SessionManager.open(missingSessionCwdIssue.sessionFile!, sessionDir, selectedCwd),
+				allowRemoteHandoff,
+			);
 		} else {
 			console.error(chalk.red(new MissingSessionCwdError(missingSessionCwdIssue).message));
 			process.exit(1);

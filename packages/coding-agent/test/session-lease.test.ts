@@ -1,14 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
-import {
-	existsSync,
-	mkdirSync,
-	mkdtempSync,
-	readdirSync,
-	realpathSync,
-	rmSync,
-	utimesSync,
-	writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -173,17 +164,23 @@ describe("session write lease", () => {
 		lease.release();
 	});
 
-	it("fails closed on an incomplete lock (no metadata) and reclaims after the grace window", () => {
+	it("fails closed on an incomplete lock (no metadata)", () => {
 		const { agentDir, sessionDir } = setupDirs();
 		const lockDir = sessionLeaseLockDir(sessionDir, "s1", agentDir);
 		mkdirSync(lockDir, { recursive: true });
-		// Fresh incomplete lock: unknown owner, possibly still starting.
 		expect(() => acquireSessionLease({ sessionDir, sessionId: "s1" })).toThrow(SessionLeaseConflictError);
-		// Older than the grace window: crash-during-acquire, reclaim.
-		const past = new Date(Date.now() - 60_000);
-		utimesSync(lockDir, past, past);
+		// An incomplete acquisition has no token to validate, so it requires
+		// explicit cleanup rather than unsafe age-based reclamation.
+		rmSync(lockDir, { recursive: true, force: true });
 		const lease = acquireSessionLease({ sessionDir, sessionId: "s1" });
 		lease.release();
+	});
+
+	it("fails closed when lock metadata does not match the requested key", () => {
+		const { agentDir, sessionDir } = setupDirs();
+		plantForeignLease(agentDir, sessionDir, "s1", { sessionId: "other-session" });
+		expect(inspectSessionLease(sessionDir, "s1", agentDir)).toEqual({ status: "held" });
+		expect(() => acquireSessionLease({ sessionDir, sessionId: "s1" })).toThrow(SessionLeaseConflictError);
 	});
 
 	it("inspection reports free / held / stale without mutating", () => {
