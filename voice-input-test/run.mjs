@@ -41,11 +41,17 @@ const {
   buildRefinementMessages,
   cleanTranscript,
   extractRefinementText,
+  applyVoicePrefix,
+  VOICE_TRANSCRIPTION_PREFIX,
+  parseCurlOutput,
   prepareTranscriptForInsert,
   refineTranscriptWithOpenRouter,
+  refinementTransport,
   resolveAsrProjectProfile,
+  setRefinementTransport,
   spokenFormOf,
   transcribeAudio,
+  tryAcquireCaptureLock,
 } = await import(pathToFileURL(VOICE_EXTENSION).href);
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -148,8 +154,28 @@ const K_LEFT_CTRL_PRESS = "\x1b[57442;5u";
 const K_CTRL_SHIFT_PRESS = "\x1b[57441;6u";
 const K_SHIFTED_A = "\x1b[97:65:97;2:1u";
 const K_SPACE = "\x1b[32;1:1u";
+const FOCUS_IN = "\x1b[I";
+const FOCUS_OUT = "\x1b[O";
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
+
+console.log("capture lock: only one Pi process can own the microphone");
+{
+  const root = await mkdtemp(join(tmpdir(), "pi-voice-lock-test-"));
+  const lockTarget = join(root, "capture");
+  try {
+    const first = await tryAcquireCaptureLock(lockTarget);
+    ok(first !== null, "first session acquires the lock");
+    eq(await tryAcquireCaptureLock(lockTarget), null, "second session is rejected");
+
+    await first?.();
+    const second = await tryAcquireCaptureLock(lockTarget);
+    ok(second !== null, "next session acquires after release");
+    await second?.();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+}
 
 console.log("capture: /voice SoX arguments stop after trailing silence");
 {
@@ -266,7 +292,7 @@ console.log("project context: selects a trusted foquz-core Git repository and it
       "first turn has the description",
     );
     const allContextText = contextMessages.map((m) => m.content[0].text).join("\n");
-    ok(allContextText.includes("FoquzQuestion"), "vocabulary terms included in context turns");
+    ok(allContextText.includes("ViewModel"), "vocabulary terms included in context turns");
     ok(allContextText.includes("doxswf"), "hard-word terms included in context turns");
     ok(
       contextMessages.every((m) => m.content[0].text.length <= 400),
@@ -275,13 +301,13 @@ console.log("project context: selects a trusted foquz-core Git repository and it
 
     const hotwords = buildHotwords(GLOBAL_VOCABULARY);
     eq(hotwords["foquz"], 4, "plain term keeps the normal hotword weight");
-    eq(hotwords["foquz question"], 50, "camelCase term boosted via its spoken form");
+    eq(hotwords["view model"], 50, "camelCase term boosted via its spoken form");
     eq(hotwords["poll vue app"], 50, "hyphenated identifier boosted via its spoken form");
     eq(hotwords["pi coding agent"], 50, "pi coding agent boosted via its spoken form");
     eq(
       Object.keys(hotwords).length,
       new Set(GLOBAL_VOCABULARY.map(spokenFormOf)).size,
-      "every distinct spoken form becomes a hotword (foquz-question and FoquzQuestion share one)",
+      "every distinct spoken form becomes a hotword (ViewModel included)",
     );
   } finally {
     await rm(dir, { recursive: true, force: true });
@@ -378,7 +404,7 @@ console.log("transcription: sends the global profile merged with foquz-core as D
     eq(payload.parameters.sample_rate, "16000", "16 kHz sample rate sent");
     eq(payload.parameters.language_hints, ["en"], "English language hint sent");
     eq(payload.parameters.vocabulary["foquz"], 4, "inline hotword for foquz");
-    eq(payload.parameters.vocabulary["foquz question"], 50, "camelCase term boosted via spoken hotword");
+    eq(payload.parameters.vocabulary["view model"], 50, "camelCase term boosted via spoken hotword");
     eq(payload.parameters.vocabulary["poll vue app"], 50, "hyphenated identifier boosted via spoken hotword");
     eq(payload.parameters.vocabulary["pi coding agent"], 50, "pi coding agent boosted via spoken hotword");
     ok(payload.messages === undefined, "no chat-completions messages shape");
@@ -390,7 +416,7 @@ console.log("transcription: sends the global profile merged with foquz-core as D
     const genericPayload = JSON.parse(request.options.body);
     eq(genericPayload.input.messages.length, 1, "transcribeAudio without a profile sends only the audio message");
     eq(genericPayload.parameters.vocabulary, undefined, "no hotwords without a profile");
-    ok(!JSON.stringify(genericPayload).includes("FoquzQuestion"), "no vocabulary without a profile");
+    ok(!JSON.stringify(genericPayload).includes("ViewModel"), "no vocabulary without a profile");
 
     await transcribeAudio(audioPath, "test-key", "https://example.maas.aliyuncs.com", GLOBAL_ASR_PROFILE);
     const globalPayload = JSON.parse(request.options.body);
@@ -400,7 +426,7 @@ console.log("transcription: sends the global profile merged with foquz-core as D
       "global term list used without a project profile",
     );
     eq(globalPayload.parameters.vocabulary["foquz"], 4, "global hotword for foquz");
-    eq(globalPayload.parameters.vocabulary["foquz question"], 50, "global spoken super hotword for camelCase term");
+    eq(globalPayload.parameters.vocabulary["view model"], 50, "global spoken super hotword for camelCase term");
     ok(
       !JSON.stringify(globalPayload).includes("PHP 8.2"),
       "no foquz-core-specific description in the global request",
@@ -415,8 +441,7 @@ console.log("spoken forms: recognized speech normalized to canonical spellings")
 {
   eq(spokenFormOf("poll-vue-app"), "poll vue app", "hyphens become spaces");
   eq(spokenFormOf("foquz-frontend-vue"), "foquz frontend vue", "multi-hyphen term split");
-  eq(spokenFormOf("FoquzQuestion"), "foquz question", "camelCase is split");
-  eq(spokenFormOf("ViewModel"), "view model", "camelCase is split (2)");
+  eq(spokenFormOf("ViewModel"), "view model", "camelCase is split");
   eq(spokenFormOf("NPS"), "nps", "acronyms lowercase");
   eq(spokenFormOf("knockout"), "knockout", "plain word unchanged");
   eq(
@@ -478,7 +503,9 @@ console.log("cleanTranscript: deterministic filler removal and tidying");
   // Tidying: whitespace, punctuation, sentence capitalization.
   eq(cleanTranscript("hello   world"), "Hello world", "whitespace collapsed and sentence capitalized");
   eq(cleanTranscript("wait , what"), "Wait, what", "space before comma removed");
-  eq(cleanTranscript("first . second"), "First. Second", "each sentence capitalized");
+  eq(cleanTranscript("first . second"), "First. Second", "sentence-ending dot collapses");
+  eq(cleanTranscript("go to ../src"), "Go to ../src", "space before a parent-path .. kept");
+  eq(cleanTranscript("check the .env file"), "Check the .env file", "space before a dotfile kept");
   eq(cleanTranscript("um, uh, I mean, like, let's go"), "Let's go", "filler storm reduces to the real request");
 
   eq(prepareTranscriptForInsert("hello world"), "Hello world", "clean transcript prepared");
@@ -488,21 +515,72 @@ console.log("cleanTranscript: deterministic filler removal and tidying");
   eq(prepareTranscriptForInsert("   \n"), null, "blank → no speech");
 }
 
-console.log("refinement: Gemini 3.5 Flash Lite prompt and response parsing");
+console.log("insertion: empty editor gets a voice-transcription prefix");
+{
+  eq(
+    applyVoicePrefix("", "Hello world"),
+    "User voice transcription — may contain misspellings: Hello world",
+    "empty editor gets the prefix",
+  );
+  eq(
+    applyVoicePrefix("   \n", "Hello world"),
+    "User voice transcription — may contain misspellings: Hello world",
+    "whitespace-only editor gets the prefix",
+  );
+  eq(applyVoicePrefix("Some existing text", "Hello world"), "Hello world", "non-empty editor keeps the plain transcript");
+  eq(applyVoicePrefix("Some text\n", "Hello world"), "Hello world", "trailing newline still counts as non-empty");
+}
+
+console.log("refinement: GPT-OSS 120B on Groq prompt and response parsing");
 {
   ok(
-    REFINEMENT_SYSTEM_PROMPT.includes("Only delete") &&
-      REFINEMENT_SYSTEM_PROMPT.includes("Never rephrase"),
-    "prompt is deletion-only",
+    REFINEMENT_SYSTEM_PROMPT.includes("Remove repetitions") &&
+      REFINEMENT_SYSTEM_PROMPT.includes("Be conservative"),
+    "prompt removes repetitions and corrects terminology conservatively",
   );
   ok(REFINEMENT_SYSTEM_PROMPT.includes("repeated sentences"), "prompt targets repeated sentences");
   ok(REFINEMENT_SYSTEM_PROMPT.includes("ASR repetition loops"), "prompt targets ASR loops");
+  ok(REFINEMENT_SYSTEM_PROMPT.includes("canonical spelling"), "prompt targets canonical spellings");
+  ok(REFINEMENT_SYSTEM_PROMPT.includes("mis-transcription"), "prompt targets mis-transcriptions");
+  ok(
+    REFINEMENT_SYSTEM_PROMPT.includes("QuizQuestionModel.js"),
+    "prompt joins dictated file names (PascalCase)",
+  );
+  ok(REFINEMENT_SYSTEM_PROMPT.includes("UPPER_SNAKE_CASE"), "prompt knows constant casing");
+  ok(REFINEMENT_SYSTEM_PROMPT.includes("date-formatter.ts"), "prompt knows kebab-case utility files");
+  ok(
+    REFINEMENT_SYSTEM_PROMPT.includes("/home/projects/foquz-repositories/foquz-core"),
+    "prompt joins dictated paths with slashes",
+  );
+  ok(REFINEMENT_SYSTEM_PROMPT.includes("AnswersController.php"), "prompt knows PHP PascalCase class files");
+  ok(REFINEMENT_SYSTEM_PROMPT.includes("PSR-4"), "prompt knows the PSR-4 filename rule");
 
   const messages = buildRefinementMessages("we need to we need to deploy");
   eq(messages.length, 2, "system + user messages");
   eq(messages[0].role, "system", "system message first");
   eq(messages[1].role, "user", "user message second");
-  eq(messages[1].content, "we need to we need to deploy", "raw transcript sent verbatim");
+  eq(
+    messages[1].content,
+    "Transcript to clean:\nwe need to we need to deploy",
+    "no profile: transcript section only",
+  );
+
+  const withProfile = buildRefinementMessages("we need to we need to deploy", GLOBAL_ASR_PROFILE);
+  ok(withProfile[1].content.includes("Terminology"), "profile adds a terminology section");
+  ok(
+    withProfile[1].content.includes("poll-vue-app (poll vue app)"),
+    "spoken forms are annotated for the LLM",
+  );
+  ok(
+    withProfile[1].content.includes("Transcript to clean:\nwe need to we need to deploy"),
+    "transcript section preserved with profile",
+  );
+  const merged = mergeAsrProfiles(GLOBAL_ASR_PROFILE, FOQUZ_CORE_PROFILE);
+  const withContext = buildRefinementMessages("deploy now", merged);
+  ok(
+    withContext[1].content.includes("Foquz's legacy/core survey and polling platform."),
+    "project description sent as context",
+  );
 
   eq(
     extractRefinementText({ choices: [{ message: { content: "we need to deploy" } }] }),
@@ -521,16 +599,32 @@ console.log("refinement: Gemini 3.5 Flash Lite prompt and response parsing");
     null,
     "empty content → null",
   );
+
+  eq(
+    parseCurlOutput(`{"choices":[]}\n__PI_CURL_STATUS__200`),
+    { body: '{"choices":[]}', status: 200 },
+    "curl body + status parsed",
+  );
+  eq(
+    parseCurlOutput(`multi\nline\nbody\n__PI_CURL_STATUS__429`),
+    { body: "multi\nline\nbody", status: 429 },
+    "body with newlines keeps the last status marker",
+  );
+  eq(parseCurlOutput("no marker here"), null, "missing marker → null");
+  eq(parseCurlOutput("\n__PI_CURL_STATUS__99"), null, "out-of-range status → null");
+  eq(parseCurlOutput("\n__PI_CURL_STATUS__abc"), null, "non-numeric status → null");
 }
 
 console.log("refinement: short utterances and missing keys skip the network");
 {
-  const originalFetch = globalThis.fetch;
+  const originalTransport = refinementTransport;
   let calls = 0;
-  globalThis.fetch = async () => {
+  setRefinementTransport(async () => {
     calls++;
-    return new Response(JSON.stringify({ choices: [{ message: { content: "" } }] }), { status: 200 });
-  };
+    return new Response(JSON.stringify({ choices: [{ message: { content: "" } }] }), {
+      status: 200,
+    });
+  });
   try {
     eq(await refineTranscriptWithOpenRouter("yes", "test-key"), "yes", "1-word utterance skipped");
     eq(
@@ -543,48 +637,55 @@ console.log("refinement: short utterances and missing keys skip the network");
       "we need to we need to deploy",
       "missing key keeps the raw transcript",
     );
-    eq(calls, 0, "no network request for skipped cases");
+    eq(calls, 0, "no transport call for skipped cases");
   } finally {
-    globalThis.fetch = originalFetch;
+    setRefinementTransport(originalTransport);
   }
 }
 
 console.log("refinement: OpenRouter request shape, success, and failure fallback");
 {
-  const originalFetch = globalThis.fetch;
+  const originalTransport = refinementTransport;
   let request;
   try {
-    globalThis.fetch = async (url, options) => {
-      request = { url, options };
+    setRefinementTransport(async (url, payload, apiKey) => {
+      request = { url, payload: JSON.parse(payload), apiKey };
       return new Response(
         JSON.stringify({ choices: [{ message: { content: "we need to deploy" } }] }),
         { status: 200, headers: { "Content-Type": "application/json" } },
       );
-    };
+    });
     eq(
       await refineTranscriptWithOpenRouter("we need to we need to deploy", "test-key"),
       "we need to deploy",
       "cleaned transcript returned on success",
     );
     eq(request.url, "https://openrouter.ai/api/v1/chat/completions", "OpenRouter chat endpoint used");
-    eq(request.options.method, "POST", "POST request used");
-    eq(request.options.headers.Authorization, "Bearer test-key", "API key sent");
-    const payload = JSON.parse(request.options.body);
-    eq(payload.model, "google/gemini-3.5-flash-lite", "Gemini 3.5 Flash Lite model selected");
+    eq(request.apiKey, "test-key", "API key passed to the transport");
+    const payload = request.payload;
+    eq(payload.model, "openai/gpt-oss-120b", "GPT-OSS 120B model selected");
+    eq(payload.provider.only[0], "Groq", "provider pinned to Groq");
+    eq(payload.provider.allow_fallbacks, false, "no fallback providers");
     eq(payload.temperature, 0, "temperature 0");
     ok(payload.max_tokens >= 512, "generous output budget");
     eq(payload.messages[0].role, "system", "system message first");
-    eq(payload.messages[1].content, "we need to we need to deploy", "raw transcript sent verbatim");
+    ok(
+      payload.messages[1].content.includes("we need to we need to deploy"),
+      "raw transcript included in user message",
+    );
 
-    globalThis.fetch = async () =>
-      new Response(JSON.stringify({ error: { message: "unauthorized" } }), { status: 401 });
+    setRefinementTransport(async () => {
+      return new Response(JSON.stringify({ error: { message: "unauthorized" } }), {
+        status: 401,
+      });
+    });
     eq(
       await refineTranscriptWithOpenRouter("we need to we need to deploy", "test-key"),
       "we need to we need to deploy",
       "permanent API failure keeps the raw transcript",
     );
   } finally {
-    globalThis.fetch = originalFetch;
+    setRefinementTransport(originalTransport);
   }
 }
 
@@ -612,6 +713,39 @@ console.log("kitty: quick Shift tap does nothing and never records");
   eq(e.state.captures, [], "no capture");
   eq(e.state.sent, [], "nothing sent");
   eq(e.state.status, undefined, "no status set");
+}
+
+console.log("focus: an unfocused terminal cannot begin a hold");
+{
+  const e = makeEffects();
+  const ptt = new PushToTalk(e);
+  eq(ptt.handleInput(FOCUS_OUT), { consume: true }, "focus-out report consumed");
+  eq(ptt.handleInput(K_PRESS), { consume: true }, "inactive Shift consumed");
+  e.advance(2000);
+  eq(e.state.captures, [], "inactive session never starts recording");
+}
+
+console.log("focus: coalesced focus reports are stripped before routing input");
+{
+  const e = makeEffects();
+  const ptt = new PushToTalk(e);
+  eq(ptt.handleInput(FOCUS_OUT + K_PRESS), { consume: true }, "coalesced focus-out blocks Shift");
+  e.advance(2000);
+  eq(e.state.captures, [], "coalesced inactive event never records");
+  eq(ptt.handleInput(FOCUS_IN + "a"), { data: "a" }, "focus report stripped from ordinary text");
+}
+
+console.log("focus: losing focus stops an active recording");
+{
+  const e = makeEffects();
+  const ptt = new PushToTalk(e);
+  ptt.handleInput(K_PRESS);
+  e.advance(2000);
+  ptt.handleInput(FOCUS_OUT);
+  eq(e.state.stops, 1, "focus loss stops microphone capture");
+  e.state.captureResolve("/tmp/fake/capture.wav");
+  await settle();
+  eq(e.state.sent, ["hello world"], "completed focused portion is still inserted in its owner session");
 }
 
 console.log("kitty: quick Shift tap resets; a later hold still works");
@@ -761,14 +895,34 @@ console.log("kitty: failed capture (mic) → error with permission hint");
   ok(e.state.notifies.some((n) => n.msg.includes("Microphone")), "mic permission hint");
 }
 
-console.log("kitty: recording capped at 60s");
+console.log("kitty: capture owned by another Pi process → busy warning");
+{
+  const e = makeEffects();
+  e.state.lastCaptureErr = "another Pi session is already recording";
+  const ptt = new PushToTalk(e);
+  ptt.handleInput(K_PRESS);
+  e.advance(2000);
+  e.state.captureResolve(null);
+  await settle();
+  eq(e.state.sent, [], "nothing sent");
+  ok(
+    e.state.notifies.some((n) => n.type === "warning" && n.msg.includes("another Pi session")),
+    "cross-session busy warning",
+  );
+  ok(
+    !e.state.notifies.some((n) => n.msg.includes("Microphone permission")),
+    "no misleading permission error",
+  );
+}
+
+console.log("kitty: recording capped at 180s");
 {
   const e = makeEffects();
   const ptt = new PushToTalk(e);
   ptt.handleInput(K_PRESS);
   e.advance(2000);
   eq(e.state.captures.length, 1, "capture started");
-  e.advance(60_000);
+  e.advance(180_000);
   ok(e.state.stops >= 1, "stopCapture on cap");
   ok(e.state.notifies.some((n) => n.msg.includes("limit")), "limit notification");
   e.state.captureResolve("/tmp/fake/capture.wav");
@@ -903,6 +1057,10 @@ console.log("wiring: default export registers /voice and the input listener");
   eq(Object.keys(pi.commands), ["voice"], "registers /voice");
   ok(typeof pi.handlers.session_start === "function", "session_start handler");
   let inputHandler = null;
+  let listenerRegistrations = 0;
+  let listenerUnsubscribes = 0;
+  const oldStatuses = [];
+  const replacementStatuses = [];
   const ctx = {
     cwd: ROOT_DIR,
     isProjectTrusted: () => true,
@@ -910,22 +1068,36 @@ console.log("wiring: default export registers /voice and the input listener");
     hasUI: true,
     ui: {
       onTerminalInput: (h) => {
+        listenerRegistrations++;
         inputHandler = h;
-        return () => {};
+        return () => {
+          listenerUnsubscribes++;
+        };
       },
       notify: () => {},
-      setStatus: () => {},
+      setStatus: (key, text) => oldStatuses.push({ key, text }),
       pasteToEditor: () => {},
       getEditorText: () => "",
       setEditorText: () => {},
     },
   };
+  const replacementCtx = {
+    ...ctx,
+    ui: {
+      ...ctx.ui,
+      setStatus: (key, text) => replacementStatuses.push({ key, text }),
+    },
+  };
   const originalWrite = process.stdout.write;
   const originalIsTty = Object.getOwnPropertyDescriptor(process.stdout, "isTTY");
   const protocolWrites = [];
+  let focusOutResult;
+  let inactivePressResult;
+  let focusInResult;
   let pressResult;
   let releaseResult;
   let spaceResult;
+  let unsubscribesAfterStaleShutdown;
   try {
     Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
     process.stdout.write = (chunk) => {
@@ -934,10 +1106,16 @@ console.log("wiring: default export registers /voice and the input listener");
     };
     pi.handlers.session_start({}, ctx);
     pi.handlers.session_start({}, ctx); // setup must be idempotent
+    pi.handlers.session_start({}, replacementCtx); // reload replaces the UI context
+    pi.handlers.session_shutdown({}, ctx); // delayed shutdown from the replaced UI
+    unsubscribesAfterStaleShutdown = listenerUnsubscribes;
+    focusOutResult = inputHandler(FOCUS_OUT);
+    inactivePressResult = inputHandler(K_PRESS);
+    focusInResult = inputHandler(FOCUS_IN);
     pressResult = inputHandler(K_PRESS);
     releaseResult = inputHandler(K_RELEASE);
     spaceResult = inputHandler(" ");
-    pi.handlers.session_shutdown();
+    pi.handlers.session_shutdown({}, replacementCtx);
   } finally {
     process.stdout.write = originalWrite;
     if (originalIsTty) Object.defineProperty(process.stdout, "isTTY", originalIsTty);
@@ -945,8 +1123,20 @@ console.log("wiring: default export registers /voice and the input listener");
   }
 
   ok(typeof inputHandler === "function", "input listener registered on session_start");
-  eq(protocolWrites, ["\x1b[>15u", "\x1b[<u"], "keyboard protocol pushed and restored once");
-  eq(pressResult, { consume: true }, "wired handler consumes Shift press");
+  eq(listenerRegistrations, 2, "replacement UI receives a fresh input listener");
+  eq(unsubscribesAfterStaleShutdown, 1, "stale shutdown leaves replacement listener active");
+  eq(listenerUnsubscribes, 2, "old and replacement UI listeners are both cleaned up");
+  ok(oldStatuses.some((s) => s.key === "voice-input" && s.text === undefined), "old UI status cleared on replacement");
+  ok(replacementStatuses.some((s) => s.key === "voice-input" && s.text === undefined), "replacement UI receives current status");
+  eq(
+    protocolWrites,
+    ["\x1b[>15u", "\x1b[?1004h", "\x1b[?1004h", "\x1b[?1004l", "\x1b[<u"],
+    "keyboard and focus protocols enabled and restored once",
+  );
+  eq(focusOutResult, { consume: true }, "focus-out report consumed");
+  eq(inactivePressResult, { consume: true }, "inactive split consumes Shift without recording");
+  eq(focusInResult, { consume: true }, "focus-in report consumed");
+  eq(pressResult, { consume: true }, "focused handler consumes Shift press");
   eq(releaseResult, { consume: true }, "wired handler consumes Shift release");
   eq(spaceResult, undefined, "wired handler leaves Space untouched");
 }

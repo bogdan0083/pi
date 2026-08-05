@@ -18,15 +18,28 @@
  * - /voice           → record from the microphone until silence, then
  *                      transcribe + insert (same engine; press Shift to stop).
  *
+ * Multiple sessions
+ * -----------------
+ * Each Pi session owns its push-to-talk machine and terminal-input listener,
+ * so hold-Shift works in every open session and the transcript is inserted
+ * into the editor of the session where recording was triggered — not into
+ * whichever session started first or last. Only one recording can run at a
+ * time across all sessions (there is a single microphone); a second session
+ * that tries to record gets a clear "already recording" notice.
+ *
  * Requirements
  * ------------
  * 1. `rec` from SoX:            brew install sox
  * 2. `DASHSCOPE_API_KEY` and `DASHSCOPE_BASE_URL` in the environment or in
  *    `~/.pi/agent/.env` (the extension never logs them).
  * 3. `OPENROUTER_API_KEY` in the environment or in `~/.pi/agent/.env`
- *    (optional): enables the LLM transcript-refinement stage (Gemini 2.5
- *    Flash Lite). Without it dictation still works; only that stage is
- *    skipped.
+ *    (optional): enables the LLM transcript-refinement stage (GPT-OSS
+ *    120B, served by Groq). Without it dictation still works; only
+ *    that stage is skipped.
+ *    The stage calls OpenRouter through `curl` (which honors
+ *    http_proxy/https_proxy/ALL_PROXY; `OPENROUTER_PROXY` overrides them),
+ *    because undici's fetch ignores the proxy environment and OpenRouter
+ *    rejects those direct connections with HTTP 403.
  * 4. Microphone permission for your terminal app:
  *    System Settings → Privacy & Security → Microphone → enable your terminal.
  *
@@ -34,7 +47,10 @@
  * -------------
  * POST {DASHSCOPE_BASE_URL}/api/v1/services/aigc/multimodal-generation/generation
  * model: qwen-audio-3.0-asr-flash (native DashScope endpoint; the
- * OpenAI-compatible route does not serve this model).
+ * OpenAI-compatible route does not serve this model). If DASHSCOPE_BASE_URL
+ * is set to the OpenAI-compatible form (.../compatible-mode/v1) — e.g. by
+ * the shell — the suffix is stripped automatically so the native endpoint
+ * is always used.
  * Audio: 16 kHz mono 16-bit WAV, base64 as a data URI in an input_audio
  * message; parameters format=wav, sample_rate=16000, language_hints=["en"].
  * Recognition context: a global hard-word vocabulary (foquz, doxsw, yii,
@@ -53,13 +69,22 @@
  * Transcript cleanup: the transcript is refined in two stages before
  * insertion.
  *
- * Stage 1 — LLM refinement (OpenRouter · Gemini 3.5 Flash Lite): the raw
- * text is posted to google/gemini-3.5-flash-lite on OpenRouter with
- * deletion-only instructions that remove repeated words and sentences,
- * stutters, false starts, and ASR repetition loops while preserving
- * punctuation, numbers, and code identifiers. Best-effort: it is skipped
- * for transcripts under three words, when OPENROUTER_API_KEY is unset, or
- * on any request failure, and it never blocks dictation.
+ * Stage 1 — LLM refinement (OpenRouter · GPT-OSS 120B on Groq):
+ * the raw text is posted to openai/gpt-oss-120b on OpenRouter,
+ * hard-pinned to the Groq provider, with instructions that remove repeated
+ * words and sentences, stutters, false starts, and ASR repetition loops,
+ * then conservatively correct mangled project terms to their canonical
+ * spellings using the same context and terminology the ASR stage received,
+ * and join dictated file names and identifiers into properly cased tokens
+ * ("quiz question model dot js" → QuizQuestionModel.js,
+ * "extra question type" → EXTRA_QUESTION_TYPE), spell out "slash" paths
+ * ("home slash projects slash focus repositories slash focus core" →
+ * /home/projects/foquz-repositories/foquz-core), and follow PHP conventions
+ * for .php files (PascalCase filename = class name, PSR-4).
+ * Punctuation, numbers, and code identifiers are preserved. Best-effort: it
+ * is skipped for transcripts under three words, when OPENROUTER_API_KEY is
+ * unset, or on any request failure, and it never blocks dictation. The call
+ * goes through `curl` so it honors the proxy environment (see Requirements).
  *
  * Stage 2 — deterministic post-processing (regex-only, no LLM): disfluency
  * fillers (uh, um, em, oh, er, erm, ah, eh, hmm, mm, mhm — any casing,
@@ -71,16 +96,22 @@
  * normalized back to canonical spellings. A transcript that cleans down to
  * nothing is treated as no speech.
  *
+ * When the editor is empty, the transcript is inserted with a short prefix —
+ * "User voice transcription — may contain misspellings: " — so the coding
+ * agent knows the text came from dictation and may contain wrong words.
+ * Appending to an existing editor buffer inserts the plain transcript.
+ *
  * Privacy
  * -------
  * Recorded audio and the global hard-word vocabulary (general software
  * terms) are uploaded for every session; a matched project profile (e.g.
  * the foquz-core description) is uploaded only while working in that
  * repository. The local cwd itself is never uploaded. For the LLM
- * refinement stage, the raw transcript text is additionally sent to
- * OpenRouter, which forwards it to Google (Gemini 3.5 Flash Lite); audio
- * is never sent there. Without OPENROUTER_API_KEY nothing is uploaded for
- * cleanup. Generated transcripts are treated like normal chat messages.
+ * refinement stage, the raw transcript text — plus the project context and
+ * terminology list — is additionally sent to OpenRouter, which forwards it
+ * to Groq (GPT-OSS 120B); audio is never sent there. Without
+ * OPENROUTER_API_KEY nothing is uploaded for cleanup. Generated transcripts
+ * are treated like normal chat messages.
  *
  * Key handling
  * ------------
@@ -95,8 +126,9 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import { execFileSync, spawn, type ChildProcess } from "node:child_process";
-import { existsSync, readFileSync, statSync } from "node:fs";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -140,13 +172,12 @@ export interface AsrProjectProfile {
  *
  * The spoken form used for hotwords is derived automatically (hyphens and
  * camelCase become words: "poll-vue-app" → "poll vue app",
- * "FoquzQuestion" → "foquz question"), so editing this list is all that's
+ * "ViewModel" → "view model"), so editing this list is all that's
  * needed to add or trim keywords.
  */
 export const GLOBAL_VOCABULARY = [
   "foquz",
   "foquz-poll",
-  "foquz-question",
   "foquz-core",
   "foquz-quiz",
   "foquz-ui",
@@ -161,7 +192,6 @@ export const GLOBAL_VOCABULARY = [
   "Vue",
   "NPS",
   "DTO",
-  "FoquzQuestion",
   "redmine",
   "reka-ui",
   "knockout",
@@ -215,7 +245,7 @@ export function mergeAsrProfiles(
 /**
  * The form the user actually speaks: hyphens become spaces, camelCase is
  * split, everything lowercased. "poll-vue-app" → "poll vue app",
- * "FoquzQuestion" → "foquz question", "NPS" → "nps", "knockout" stays
+ * "ViewModel" → "view model", "NPS" → "nps", "knockout" stays
  * "knockout".
  */
 export function spokenFormOf(term: string): string {
@@ -326,16 +356,26 @@ export interface AsrContextMessage {
  * the wiring always passes the merged global profile, so in practice the
  * hard-word vocabulary is always present.
  */
+/**
+ * One line per vocabulary term — canonical spelling, with its spoken form in
+ * parentheses when they differ ("poll-vue-app (poll vue app)"). Shared by the
+ * DashScope context turns and the LLM refinement prompt so post-processing
+ * sees exactly the terminology the ASR stage was told.
+ */
+export function formatTerminologyLines(vocabulary: readonly string[]): string[] {
+  return vocabulary.map((term) => {
+    const spoken = spokenFormOf(term);
+    return spoken === term.toLowerCase() ? term : `${term} (${spoken})`;
+  });
+}
+
 export function buildAsrContextMessages(profile?: AsrProjectProfile): AsrContextMessage[] {
   if (!profile) return [];
   const turns: string[] = [];
   if (profile.context.length > 0) {
     turns.push(buildAsrContextText(profile).slice(0, MAX_CONTEXT_CHARS));
   }
-  const termLines = profile.vocabulary.map((term) => {
-    const spoken = spokenFormOf(term);
-    return spoken === term.toLowerCase() ? term : `${term} (${spoken})`;
-  });
+  const termLines = formatTerminologyLines(profile.vocabulary);
   turns.push(...splitIntoTurns(termLines, MAX_CONTEXT_CHARS, MAX_CONTEXT_TURNS - turns.length));
   return turns
     .filter((text) => text.length > 0)
@@ -371,14 +411,50 @@ export function buildHotwords(vocabulary: readonly string[]): Record<string, num
 }
 
 const HOLD_MS = 2000; // Shift must be held this long before listening starts.
-const MAX_RECORDING_MS = 60_000; // Hard cap on one recording.
+const MAX_RECORDING_MS = 180_000; // Hard cap on one recording (model allows 5 min; 10 MB base64 ≈ 3.5–4 min at 16 kHz).
 const MAX_ATTEMPTS = 3; // Transcription retries for transient failures.
 const REQUEST_TIMEOUT_MS = 120_000; // Doc §4/§8: 120 s request timeout.
 const RETRYABLE_STATUS = new Set([408, 429, 500, 502, 503, 504]);
 const STATUS_KEY = "voice-input";
+/** `proper-lockfile` appends `.lock`; the target itself need not exist because
+ *  realpath is disabled below. */
+const CAPTURE_LOCK_TARGET = join(getAgentDir(), "voice-input-capture");
+const CAPTURE_LOCK_STALE_MS = 30_000;
+const CAPTURE_LOCK_UPDATE_MS = 10_000;
 
-// LLM transcript refinement (OpenRouter · Gemini 3.5 Flash Lite).
-const REFINEMENT_MODEL = "google/gemini-3.5-flash-lite";
+interface ProperLockfileApi {
+  lock(
+    file: string,
+    options: {
+      realpath: false;
+      stale: number;
+      update: number;
+      retries: number;
+      onCompromised(error: Error): void;
+    },
+  ): Promise<() => Promise<void>>;
+}
+
+// proper-lockfile is a pi-coding-agent runtime dependency. Anchor resolution
+// at the running CLI. The `which pi` fallback supports the standalone test
+// harness, whose argv points at the harness rather than the Pi executable.
+let properLockfile: ProperLockfileApi;
+try {
+  properLockfile = createRequire(process.argv[1])("proper-lockfile") as ProperLockfileApi;
+} catch {
+  const piCli = realpathSync(
+    execFileSync("which", ["pi"], { encoding: "utf8" }).trim(),
+  );
+  properLockfile = createRequire(piCli)("proper-lockfile") as ProperLockfileApi;
+}
+
+// LLM transcript refinement (OpenRouter · GPT-OSS 120B on Groq).
+const REFINEMENT_MODEL = "openai/gpt-oss-120b";
+/** Hard-pin the refinement stage to the Groq provider (fast LPU inference,
+ *  fraction of the Gemini price). With allow_fallbacks:false, a Groq outage
+ *  surfaces as a request failure and the stage keeps the raw transcript —
+ *  dictation never depends on this stage. */
+const REFINEMENT_PROVIDER_ROUTING = { only: ["Groq"], allow_fallbacks: false } as const;
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const OPENROUTER_CHAT_PATH = "/chat/completions";
 /** Utterances shorter than this cannot contain sentence-level repeats. */
@@ -386,6 +462,139 @@ const MIN_REFINEMENT_WORDS = 3;
 const REFINEMENT_TIMEOUT_MS = 10_000;
 const REFINEMENT_ATTEMPTS = 2;
 const REFINEMENT_MAX_TOKENS = 1024;
+
+// ─── OpenRouter transport (curl, not fetch) ─────────────────────────────────
+
+/** Suffix curl appends via --write-out after the response body. */
+const CURL_STATUS_MARKER = "__PI_CURL_STATUS__";
+/** Backstop SIGKILL; curl's own --max-time governs the request. */
+const CURL_PROCESS_TIMEOUT_MS = REFINEMENT_TIMEOUT_MS + 5_000;
+
+/**
+ * curl in place of fetch for the OpenRouter stage. undici ignores the
+ * standard proxy environment variables (http_proxy/https_proxy/ALL_PROXY),
+ * so a fetch from this machine connects directly and OpenRouter's security
+ * policy rejects it with HTTP 403; curl honors those variables natively and
+ * the proxied connection is accepted. An explicit OPENROUTER_PROXY (from
+ * the environment or ~/.pi/agent/.env) overrides them via --proxy.
+ *
+ * The API key travels in a temporary 0600 header file, never in argv (which
+ * is visible in the process list). Resolves to a fetch-compatible Response
+ * so the retry logic stays the same; throws a transient TypeError when no
+ * HTTP response arrives (connect failure, timeout, missing curl).
+ */
+export async function postChatCompletionWithCurl(
+  url: string,
+  payload: string,
+  apiKey: string,
+): Promise<Response> {
+  const dir = await mkdtemp(join(tmpdir(), "pi-refine-"));
+  const headerFile = join(dir, "headers.txt");
+  try {
+    await writeFile(
+      headerFile,
+      `Authorization: Bearer ${apiKey}\nContent-Type: application/json\n`,
+      { mode: 0o600 },
+    );
+    const proxy = getRefinementProxy();
+    const args = [
+      "-sS",
+      "--max-time", String(Math.ceil(REFINEMENT_TIMEOUT_MS / 1000)),
+      "-X", "POST",
+      "--data-binary", "@-",
+      "-w", `\n${CURL_STATUS_MARKER}%{http_code}`,
+      "-H", `@${headerFile}`,
+      ...(proxy ? ["--proxy", proxy] : []),
+      url,
+    ];
+    const { stdout, error } = await runCurl(args, payload);
+    if (error !== null) throw new TypeError(`curl request failed: ${error}`);
+    const parsed = parseCurlOutput(stdout);
+    if (!parsed) throw new TypeError("curl produced no usable HTTP response");
+    return new Response(parsed.body, {
+      status: parsed.status,
+      headers: { "content-type": "application/json" },
+    });
+  } finally {
+    await rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
+/** Split curl's stdout into the response body and the --write-out status. */
+export function parseCurlOutput(
+  stdout: string,
+): { body: string; status: number } | null {
+  const markerIndex = stdout.lastIndexOf(`\n${CURL_STATUS_MARKER}`);
+  if (markerIndex === -1) return null;
+  const body = stdout.slice(0, markerIndex);
+  const status = Number(stdout.slice(markerIndex + 1 + CURL_STATUS_MARKER.length).trim());
+  if (!Number.isInteger(status) || status < 200 || status > 599) return null;
+  return { body, status };
+}
+
+function runCurl(
+  args: string[],
+  input: string,
+): Promise<{ stdout: string; error: string | null }> {
+  return new Promise((resolve) => {
+    // spawn, not execFile: execFile's `input` option never closes curl's
+    // stdin pipe, so `--data-binary @-` blocks forever waiting for EOF.
+    const child = spawn("curl", args);
+    let stdout = "";
+    const killTimer = setTimeout(() => child.kill("SIGKILL"), CURL_PROCESS_TIMEOUT_MS);
+    child.stdout?.on("data", (chunk: Buffer) => {
+      stdout += chunk.toString("utf8");
+    });
+    child.stderr?.on("data", () => {
+      // Progress/error chatter is ignored; failures surface via the exit
+      // code and the missing status marker.
+    });
+    child.on("error", (error: NodeJS.ErrnoException) => {
+      clearTimeout(killTimer);
+      resolve({ stdout, error: error.message });
+    });
+    child.on("close", (code) => {
+      clearTimeout(killTimer);
+      if (code !== 0) {
+        resolve({ stdout, error: `curl exited with code ${code}` });
+        return;
+      }
+      resolve({ stdout, error: null });
+    });
+    child.stdin.on("error", () => {
+      // The child may exit before stdin finishes writing (EPIPE).
+    });
+    try {
+      child.stdin.write(input, "utf8");
+      child.stdin.end();
+    } catch {
+      // Spawn failure already resolved via the 'error' event.
+    }
+  });
+}
+
+function getRefinementProxy(): string | undefined {
+  if (process.env.OPENROUTER_PROXY === undefined) {
+    try {
+      loadDotEnvIfPresent(join(getAgentDir(), ".env"));
+    } catch {
+      // Fall through to the environment check below.
+    }
+  }
+  return process.env.OPENROUTER_PROXY;
+}
+
+export type RefinementTransport = (
+  url: string,
+  payload: string,
+  apiKey: string,
+) => Promise<Response>;
+
+/** Swappable transport for tests; the extension always uses curl. */
+let refinementTransport: RefinementTransport = postChatCompletionWithCurl;
+export function setRefinementTransport(transport: RefinementTransport): void {
+  refinementTransport = transport;
+}
 
 // Kitty functional key codepoints. Flag 8 is required for terminals to report
 // modifier keys as standalone events.
@@ -395,6 +604,11 @@ const LOCK_KEY_EVENT = /^\x1b\[(?:57358|57359|57360)(?:;\d+)?(?::[123])?u$/;
 const LOCK_MODIFIER_MASK = 64 | 128; // Caps Lock | Num Lock.
 const ENABLE_STANDALONE_KEY_EVENTS = "\x1b[>15u"; // Push flags 1 | 2 | 4 | 8.
 const RESTORE_KEYBOARD_PROTOCOL = "\x1b[<u"; // Pop the mode pushed above.
+// DEC focus tracking is per terminal surface. Ghostty reports the current
+// split immediately when enabled, then reports every split focus transition.
+const ENABLE_FOCUS_TRACKING = "\x1b[?1004h";
+const DISABLE_FOCUS_TRACKING = "\x1b[?1004l";
+const FOCUS_EVENT = /\x1b\[([IO])/g;
 
 interface ShiftKeyEvent {
   key: 57441 | 57447;
@@ -468,6 +682,7 @@ export class PushToTalk {
   private voiceCommand = false; // Capture started via /voice (silence auto-stop).
   private stopRequested = false;
   private active = true;
+  private focused: boolean | undefined;
 
   private effects: CaptureEffects;
 
@@ -477,6 +692,26 @@ export class PushToTalk {
 
   /** Raw terminal input listener (feed from ctx.ui.onTerminalInput). */
   handleInput(data: string): KeyHandlerResult {
+    // Focus reports and a key event may be coalesced in one stdin chunk. Strip
+    // every report first while preserving any ordinary input for Pi's editor.
+    let hadFocusEvent = false;
+    data = data.replace(FOCUS_EVENT, (_event, state: "I" | "O") => {
+      hadFocusEvent = true;
+      this.handleFocusChange(state === "I");
+      return "";
+    });
+    if (!data) return hadFocusEvent ? { consume: true } : undefined;
+
+    // Standalone modifier events can be broadcast across Ghostty splits. The
+    // focus report is authoritative; inactive splits consume but never act on
+    // those events. Undefined retains support for terminals without mode 1004.
+    if (
+      this.focused === false &&
+      (SHIFT_KEY_EVENT.test(data) || MODIFIER_KEY_EVENT.test(data) || LOCK_KEY_EVENT.test(data))
+    ) {
+      return { consume: true };
+    }
+
     const shift = parseShiftKeyEvent(data);
     if (!shift) {
       // Shift used for ordinary typing must not become a push-to-talk hold.
@@ -487,7 +722,7 @@ export class PushToTalk {
       // Flag 8 also reports other standalone modifier/lock keys. They are
       // terminal state, not editor text, so keep their CSI-u sequences out.
       if (MODIFIER_KEY_EVENT.test(data) || LOCK_KEY_EVENT.test(data)) return { consume: true };
-      return undefined;
+      return hadFocusEvent ? { data } : undefined;
     }
 
     // Standalone modifier sequences are not editor input; always consume them.
@@ -504,6 +739,20 @@ export class PushToTalk {
       return;
     }
     this.beginRecording(true);
+  }
+
+  /** Cancel an uncommitted gesture when this terminal surface loses focus.
+   *  If focus moves during recording, finish the audio at that boundary rather
+   *  than letting an inactive editor keep owning the microphone. */
+  handleFocusChange(focused: boolean): void {
+    this.focused = focused;
+    if (focused) return;
+    if (this.state === "pending") {
+      this.cancelGesture();
+      this.state = "idle";
+    } else if (this.state === "recording") {
+      this.requestStopCapture();
+    }
   }
 
   shutdown(): void {
@@ -618,11 +867,17 @@ export class PushToTalk {
     }
     if (!path) {
       const detail = this.effects.lastCaptureError();
-      this.effects.notify(
-        `Could not record audio${detail ? ` (${detail})` : ""}. ` +
-          "Check microphone permission for your terminal: System Settings → Privacy & Security → Microphone.",
-        "error",
-      );
+      if (detail === "another Pi session is already recording") {
+        this.effects.notify("Voice input is already recording in another Pi session.", "warning");
+      } else if (detail.startsWith("voice capture lock was lost")) {
+        this.effects.notify("Voice recording was cancelled because microphone ownership was lost.", "warning");
+      } else {
+        this.effects.notify(
+          `Could not record audio${detail ? ` (${detail})` : ""}. ` +
+            "Check microphone permission for your terminal: System Settings → Privacy & Security → Microphone.",
+          "error",
+        );
+      }
       this.resetToIdle();
       return;
     }
@@ -632,8 +887,9 @@ export class PushToTalk {
     let text = "";
     try {
       text = await this.effects.transcribe(path);
-      // LLM refinement (OpenRouter · Gemini 3.5 Flash Lite): removes repeated
-      // words/sentences, stutters, false starts, and ASR repetition loops.
+      // LLM refinement (OpenRouter · GPT-OSS 120B on Groq): removes
+      // repeated words/sentences, stutters, false starts, and ASR repetition
+      // loops, and corrects mangled project terms to canonical spellings.
       // Best-effort — falls back to the raw transcript; the deterministic
       // pass in insertTranscript still applies afterwards.
       text = await this.effects.refineTranscript(text);
@@ -770,6 +1026,31 @@ function extractTranscript(json: unknown): string {
   throw new Error("DashScope response did not contain transcript text.");
 }
 
+/**
+ * Derive the native DashScope multimodal-generation endpoint from a
+ * configured base URL.
+ *
+ * DashScope exposes two flavors of base URL and both are commonly exported
+ * as DASHSCOPE_BASE_URL (the shell or ~/.pi/agent/.env may disagree):
+ *
+ *   native:            https://<host>
+ *   OpenAI-compatible: https://<host>/compatible-mode/v1
+ *
+ * The ASR model (qwen-audio-3.0-asr-flash) is only served on the native
+ * route, so a /compatible-mode/v1 suffix is stripped before the native
+ * endpoint path is appended. A base URL that already carries the full native
+ * endpoint is used as-is. Never a 404 from a doubled path.
+ */
+export function buildAsrEndpoint(baseUrl: string): string {
+  const normalized = baseUrl
+    .replace(/\/compatible-mode\/v1\/?$/, "")
+    .replace(/\/compatible-mode\/?$/, "")
+    .replace(/\/+$/, "");
+  return normalized.endsWith(ENDPOINT_PATH)
+    ? normalized
+    : `${normalized}${ENDPOINT_PATH}`;
+}
+
 export async function transcribeAudio(
   audioPath: string,
   apiKey: string,
@@ -798,7 +1079,7 @@ export async function transcribeAudio(
     },
     parameters,
   });
-  const endpoint = `${baseUrl.replace(/\/+$/, "")}${ENDPOINT_PATH}`;
+  const endpoint = buildAsrEndpoint(baseUrl);
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
@@ -832,36 +1113,89 @@ export async function transcribeAudio(
   throw new Error("Transcription failed after retries.");
 }
 
-// ─── LLM transcript refinement (OpenRouter · Gemini 3.5 Flash Lite) ─────────
+// ─── LLM transcript refinement (OpenRouter · GPT-OSS 120B on Groq) ─────────
 
 /**
- * Deletion-only instructions for the refinement stage: the model may remove
- * repeated words/sentences, stutters, false starts, and ASR repetition
- * loops, but must never rephrase — so punctuation, numbers, code
- * identifiers, and canonical spellings survive byte-for-byte. The
- * deterministic pass below still guarantees filler removal and spoken-form
- * normalization afterwards.
+ * Instructions for the refinement stage: remove repeated words/sentences,
+ * stutters, false starts, and ASR repetition loops, then — conservatively —
+ * correct mangled project terms to their canonical spellings using the
+ * terminology list in the user message. Anything that is not a repetition
+ * or a clear terminology fix survives byte-for-byte: punctuation, numbers,
+ * code identifiers, and canonical spellings. The deterministic pass below
+ * still guarantees filler removal and exact spoken-form normalization.
  */
 export const REFINEMENT_SYSTEM_PROMPT = [
   "You clean up raw speech-to-text dictation that will be sent to a coding agent.",
-  "The text is full of transcription errors and repetitions; your job is to remove them.",
-  "Only delete text. Never rephrase, reorder, summarize, add, or rewrite anything.",
-  "Remove all of the following:",
+  "The text is full of transcription errors; your job is to fix them.",
+  "",
+  "1. Remove repetitions and disfluencies:",
   "- repeated words and stutters, e.g. \"I I want to\" → \"I want to\";",
   "- repeated phrases and repeated sentences, e.g. \"open the file open the file\" → \"open the file\";",
   "- ASR repetition loops, where a word or phrase is repeated several times;",
   "- false starts and restarts, e.g. \"let's refactor the... let's refactor the module\" → \"let's refactor the module\".",
   "Repetitions are always errors: never keep a duplicate just in case.",
-  "Keep everything else byte-for-byte: punctuation, capitalization, numbers, code identifiers, project names, and file paths.",
+  "",
+  "2. Correct project terminology:",
+  "The user message lists project terms as \"canonical spelling (spoken form)\".",
+  "When the transcript contains a word or phrase that is clearly a mis-transcription of one of those terms — a close-sounding variant, a wrong spelling, or an ASR garble of its spoken form — replace it with the exact canonical spelling.",
+  "",
+  "3. Join dictated file names and identifiers:",
+  "When the speech clearly spells an identifier or file name — a phrase ending in \"dot\" plus an extension, or an unambiguous project term — write it as one token with no spaces and the casing the project uses:",
+  "- files for components, models, and classes: PascalCase, e.g. \"quiz question model dot js\" → QuizQuestionModel.js, \"address question dot vue\" → AddressQuestion.vue;",
+  "- standalone utility files: kebab-case, e.g. \"date formatter dot ts\" → date-formatter.ts;",
+  "- variables and plain helpers: camelCase, e.g. \"answer variables dot js\" → answerVariables.js;",
+  "- constants: UPPER_SNAKE_CASE, e.g. \"extra question type\" → EXTRA_QUESTION_TYPE;",
+  "- composables and stores: \"use\" + PascalCase, e.g. \"use get users\" → useGetUsers.",
+  "\"dot\" becomes \".\" and the following word becomes the extension (js, ts, tsx, vue, php, scss, css, json, ...).",
+  "Only join when a file name or identifier is clearly meant; keep ordinary prose as words (\"the quiz question model is deprecated\" stays prose).",
+  "",
+  "4. Join dictated file paths:",
+  "When the speech spells a path with \"slash\" separators, write it as a real path:",
+  "- \"slash\" becomes \"/\"; multi-word segments are joined in kebab-case, e.g. \"home slash projects slash focus repositories slash focus core\" → /home/projects/foquz-repositories/foquz-core;",
+  "- a leading root word (home, root, usr, users, opt, var, ...) makes the path absolute with a leading \"/\";",
+  "- \"dot dot\" becomes \"..\" and \"dot\" becomes \".\" inside a path, e.g. \"dot dot slash src\" → ../src.",
+  "When a path segment sounds like a project term from the terminology list, write the canonical spelling: \"focus repositories\" → foquz-repositories, \"focus core\" → foquz-core.",
+  "Only join when a path is clearly meant; keep ordinary prose as words.",
+  "",
+  "5. PHP files and classes:",
+  "When the extension is php, the file is a PHP class file: write it in PascalCase to match the class it contains (PSR-4: filename = class name) — \"answers controller dot php\" → AnswersController.php, never kebab-case;",
+  "Typical PHP class suffixes: Controller, Service, Repository, Dto (or DTO), Normalizer, Helper, Trait, Builder, Component, Model, Entity;",
+  "PHP methods and properties are camelCase and constants UPPER_SNAKE_CASE.",
+  "",
+  "6. Be conservative about terminology:",
+  "- only replace when the speech clearly refers to the listed term;",
+  "- do not replace ordinary English words that merely sound similar to a term unless the context confirms the term;",
+  "- never introduce a term that is not in the list.",
+  "",
+  "7. Keep everything else byte-for-byte:",
+  "Never rephrase, reorder, summarize, add, or rewrite anything outside rules 1-6.",
+  "Preserve punctuation, capitalization, numbers, code identifiers, project names, and file paths.",
   "Reply with only the cleaned text. No commentary, quotes, or code fences.",
 ].join("\n");
 
+/**
+ * The user message carries the same context the ASR stage received — project
+ * description and terminology list — followed by the transcript to clean, so
+ * terminology corrections are informed by exactly the terms DashScope was
+ * told about.
+ */
 export function buildRefinementMessages(
   text: string,
+  profile?: AsrProjectProfile,
 ): Array<{ role: "system" | "user"; content: string }> {
+  const parts: string[] = [];
+  if (profile) {
+    const context = buildAsrContextText(profile);
+    if (context) parts.push(`Project context:\n${context}`);
+    const terms = formatTerminologyLines(profile.vocabulary);
+    if (terms.length > 0) {
+      parts.push(`Terminology (canonical spelling (spoken form)):\n${terms.join("\n")}`);
+    }
+  }
+  parts.push(`Transcript to clean:\n${text}`);
   return [
     { role: "system", content: REFINEMENT_SYSTEM_PROMPT },
-    { role: "user", content: text },
+    { role: "user", content: parts.join("\n\n") },
   ];
 }
 
@@ -908,14 +1242,15 @@ export function extractRefinementText(json: unknown): string | null {
 
 /**
  * Best-effort LLM refinement of a transcript via OpenRouter chat
- * completions (Google Gemini 3.5 Flash Lite). Total function: it never
- * throws and returns the input unchanged when the key is missing, the
- * transcript is too short to contain repeats, the call fails, or the model
- * returns nothing usable. Dictation must never depend on this stage.
+ * completions (GPT-OSS 120B, hard-pinned to Groq). Total function:
+ * it never throws and returns the input unchanged when the key is missing,
+ * the transcript is too short to contain repeats, the call fails, or the
+ * model returns nothing usable. Dictation must never depend on this stage.
  */
 export async function refineTranscriptWithOpenRouter(
   text: string,
   apiKey: string,
+  profile?: AsrProjectProfile,
 ): Promise<string> {
   if (!apiKey) return text;
   if (text.trim().split(/\s+/).filter(Boolean).length < MIN_REFINEMENT_WORDS) return text;
@@ -923,22 +1258,15 @@ export async function refineTranscriptWithOpenRouter(
   const endpoint = `${OPENROUTER_BASE_URL}${OPENROUTER_CHAT_PATH}`;
   const payload = JSON.stringify({
     model: REFINEMENT_MODEL,
-    messages: buildRefinementMessages(text),
+    messages: buildRefinementMessages(text, profile),
     temperature: 0,
     max_tokens: REFINEMENT_MAX_TOKENS,
+    provider: REFINEMENT_PROVIDER_ROUTING,
   });
 
   for (let attempt = 1; attempt <= REFINEMENT_ATTEMPTS; attempt++) {
     try {
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: payload,
-        signal: AbortSignal.timeout(REFINEMENT_TIMEOUT_MS),
-      });
+      const response = await refinementTransport(endpoint, payload, apiKey);
 
       if (response.ok) {
         const cleaned = extractRefinementText(await response.json());
@@ -987,7 +1315,7 @@ export async function refineTranscriptWithOpenRouter(
  *
  * Finally: whitespace runs collapse, spaces before punctuation are
  * removed, and the start of each sentence is capitalized. This mirrors the
- * filler removal the old Gemini cleanup performed, but is fully
+ * filler removal the old LLM cleanup performed, but is fully
  * deterministic and makes no external calls.
  */
 export function cleanTranscript(text: string): string {
@@ -1024,9 +1352,12 @@ export function cleanTranscript(text: string): string {
     //    minutes" → "it's 10 minutes" (not after "I like 10…", which is
     //    content).
     .replace(/(?<=\b(?:is|was|were|are|be|been|am|'s|’s)\s+)like\s+(?=\d)/gi, "")
-    // 6. Collapse whitespace and drop spaces before punctuation.
+    // 6. Collapse whitespace and drop spaces before sentence punctuation.
+    //    A space before "." is kept when the dot starts a token ("../src",
+    //    ".env") — only sentence-ending dots collapse ("first . second" →
+    //    "first. second").
     .replace(/\s+/g, " ")
-    .replace(/\s+([,.;:!?])/g, "$1")
+    .replace(/\s+([,;:!?]|\.(?=\s|$))/g, "$1")
     .trim()
     // 7. Capitalize the start of each sentence.
     .replace(/(^|[.!?]\s+)([a-z])/g, (_match, prefix, letter) => prefix + letter.toUpperCase());
@@ -1062,31 +1393,108 @@ export function prepareTranscriptForInsert(text: string): string | null {
   return /[\p{L}\p{N}]/u.test(cleaned) ? cleaned : null;
 }
 
+/** Prepended when dictation lands in an empty editor: a brief note that the
+ *  text is a voice transcription and may contain misspellings, so the coding
+ *  agent does not treat every word as exact. */
+export const VOICE_TRANSCRIPTION_PREFIX =
+  "User voice transcription — may contain misspellings: ";
+
+/** Prefix dictation only when the editor had no text before insertion. */
+export function applyVoicePrefix(editorText: string, cleaned: string): string {
+  return editorText.trim() === "" ? `${VOICE_TRANSCRIPTION_PREFIX}${cleaned}` : cleaned;
+}
+
 // ─── Extension wiring ────────────────────────────────────────────────────────
 
-export default function (pi: ExtensionAPI): void {
-  let currentCtx: ExtensionContext | undefined;
-  let currentProjectProfile: AsrProjectProfile | undefined;
-  let unsubscribe: (() => void) | undefined;
-  let keyboardProtocolPushed = false;
+export type CaptureLockRelease = () => Promise<void>;
 
-  // Capture state (single in-flight capture at a time).
+/** Acquire the machine-wide microphone lock. Every Pi session is a separate
+ *  OS process, so in-memory `recProc` state alone cannot prevent all of them
+ *  from recording and inserting the same utterance. `proper-lockfile` uses an
+ *  atomic mkdir, refreshes the lock while recording, and safely recovers a
+ *  lock left stale by a terminated Pi process. */
+export async function tryAcquireCaptureLock(
+  target: string,
+  onCompromised: (error: Error) => void = () => {},
+): Promise<CaptureLockRelease | null> {
+  try {
+    return await properLockfile.lock(target, {
+      realpath: false,
+      stale: CAPTURE_LOCK_STALE_MS,
+      update: CAPTURE_LOCK_UPDATE_MS,
+      retries: 0,
+      onCompromised,
+    });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ELOCKED") return null;
+    throw error;
+  }
+}
+
+/** Stable identity of the session a context belongs to. Voice state is keyed
+ *  by session so a recording is bound to the session (and editor) that
+ *  triggered it, not to whichever session started last. */
+function sessionKeyOf(ctx: ExtensionContext): string {
+  const sm = ctx.sessionManager;
+  if (sm) {
+    try {
+      const id = sm.getSessionId();
+      if (id) return `session:${id}`;
+    } catch {
+      // Fall through to the file/cwd keys below.
+    }
+    try {
+      const file = sm.getSessionFile();
+      if (file) return `file:${file}`;
+    } catch {
+      // Fall through to the cwd key below.
+    }
+  }
+  return `cwd:${ctx.cwd}`;
+}
+
+/** Per-session voice state: its own push-to-talk machine, terminal-input
+ *  listener, and UI bindings. Everything that happens during a recording —
+ *  status, notifications, transcription context, and editor insertion —
+ *  is routed through this session's context. */
+interface SessionRuntime {
+  ctx: ExtensionContext;
+  profile: AsrProjectProfile;
+  ptt: PushToTalk;
+  status: string | undefined;
+  /** Unsubscriber for this session's terminal-input listener. */
+  unsubscribe: (() => void) | undefined;
+}
+
+export default function (pi: ExtensionAPI): void {
+  // Per-session voice state. Each session owns a PushToTalk machine and a
+  // terminal-input listener, so hold-Shift works in every open session and a
+  // transcript lands in the editor of the session that recorded it.
+  const sessions = new Map<string, SessionRuntime>();
+  let terminalProtocolsEnabled = false;
+
+  // Shared microphone capture backend. `recProc` coordinates sessions hosted
+  // by this extension instance; the filesystem lock coordinates the separate
+  // OS process used by every other open Pi session.
   let recProc: ChildProcess | undefined;
   let recDir: string | undefined;
   let recError = "";
   let captureResolve: ((path: string | null) => void) | undefined;
-  let operationCtx: ExtensionContext | undefined;
-  let operationProjectProfile: AsrProjectProfile | undefined;
+  let captureOwner: string | undefined;
+  let captureLockRelease: CaptureLockRelease | undefined;
+  let captureCompromised = false;
   let pendingStop = false;
-  let shuttingDown = false;
 
-  const notify = (message: string, type?: "info" | "warning" | "error") =>
-    currentCtx?.ui.notify(message, type);
-  const setStatus = (text: string | undefined) => currentCtx?.ui.setStatus(STATUS_KEY, text);
+  async function releaseActiveCaptureLock(): Promise<void> {
+    const release = captureLockRelease;
+    captureLockRelease = undefined;
+    if (release) await release().catch(() => {});
+  }
 
   function finishCapture(path: string | null): void {
     const resolve = captureResolve;
     captureResolve = undefined;
+    captureOwner = undefined;
     resolve?.(path);
   }
 
@@ -1103,163 +1511,290 @@ export default function (pi: ExtensionAPI): void {
     else proc.once("spawn", interrupt);
   }
 
-  const effects: CaptureEffects = {
-    notify,
-    setStatus,
-    startCapture: (autoStopOnSilence) =>
-      new Promise<string | null>((resolve) => {
-        if (shuttingDown || recProc || captureResolve) {
-          resolve(null);
-          return;
-        }
-        // Bind this recording to the session and profile active at its start.
-        operationCtx = currentCtx;
-        operationProjectProfile = currentProjectProfile;
-        captureResolve = resolve;
-        pendingStop = false;
-        void mkdtemp(join(tmpdir(), "pi-asr-"))
-          .then((dir) => {
-            if (shuttingDown) {
-              void rm(dir, { recursive: true, force: true });
-              finishCapture(null);
-              return;
-            }
-            recDir = dir;
-            const out = join(dir, "capture.wav");
-            recError = "";
-            const proc = spawn("rec", buildRecArgs(out, autoStopOnSilence), {
-              stdio: ["ignore", "ignore", "pipe"],
-            });
-            recProc = proc;
-            let finalized = false;
-            const finalize = (path: string | null) => {
-              if (finalized) return;
-              finalized = true;
-              if (recProc === proc) recProc = undefined;
-              pendingStop = false;
-              if (!path) void rm(dir, { recursive: true, force: true });
-              finishCapture(path);
-            };
-            proc.stderr?.on("data", (chunk: Buffer) => {
-              recError = (recError + chunk.toString()).replace(/\s+/g, " ").trim().slice(0, 300);
-            });
-            proc.on("error", (error: NodeJS.ErrnoException) => {
-              recError =
-                error.code === "ENOENT"
-                  ? "rec (SoX) is not installed — run `brew install sox`"
-                  : error.message;
-              finalize(null);
-            });
-            proc.on("close", () => {
-              // A valid non-empty WAV means the capture succeeded, even if the
-              // exit code is nonzero (SIGINT stop or silence auto-stop).
-              let ok = false;
-              try {
-                ok = statSync(out).size > 44;
-              } catch {
-                // Shutdown may remove the temporary directory before close.
-              }
-              finalize(ok ? out : null);
-            });
-            if (pendingStop) interruptCapture(proc);
-          })
-          .catch(() => finishCapture(null));
-      }),
-    stopCapture: () => {
-      pendingStop = true;
-      const proc = recProc;
-      if (proc) interruptCapture(proc);
-    },
-    lastCaptureError: () => recError,
-    cleanupAudio: async (audioPath) => {
-      if (!audioPath) return;
-      await rm(dirname(audioPath), { recursive: true, force: true }).catch(() => {});
-    },
-    transcribe: async (audioPath) => {
-      const { apiKey, baseUrl } = getDashScopeCredentials();
-      if (!apiKey) {
-        throw new Error(
-          "DASHSCOPE_API_KEY is not set. Add it to ~/.pi/agent/.env or your environment, then /reload.",
-        );
-      }
-      if (!baseUrl) {
-        throw new Error(
-          "DASHSCOPE_BASE_URL is not set. Add it to ~/.pi/agent/.env or your environment, then /reload.",
-        );
-      }
-      return transcribeAudio(audioPath, apiKey, baseUrl, operationProjectProfile);
-    },
-    refineTranscript: async (text) => {
-      // Total: a missing key, network failure, or empty result keeps the
-      // raw transcript; the deterministic cleanup in insertTranscript still
-      // applies afterwards.
-      const apiKey = getOpenRouterKey();
-      if (!apiKey) return text;
-      return refineTranscriptWithOpenRouter(text, apiKey).catch(() => text);
-    },
-    insertTranscript: (text) => {
-      // Deterministic post-processing right before insertion: strips fillers
-      // and discourse markers; nothing meaningful left means no speech.
-      const cleaned = prepareTranscriptForInsert(text);
-      if (!cleaned) {
-        operationCtx?.ui.notify("No speech detected — try again.", "warning");
+  /** Begin a capture on behalf of the given session. Resolves with the WAV
+   *  path when the capture ends, or null on failure (including "another
+   *  session is already recording"). */
+  function startCaptureFor(sessionKey: string, autoStopOnSilence: boolean): Promise<string | null> {
+    return new Promise<string | null>((resolve) => {
+      if (recProc || captureResolve) {
+        recError = "another Pi session is already recording";
+        resolve(null);
         return;
       }
-      operationCtx?.ui.pasteToEditor(cleaned);
-      const preview = cleaned.length > 100 ? `${cleaned.slice(0, 100)}…` : cleaned;
-      operationCtx?.ui.notify(`Inserted: ${preview}`, "info");
-    },
-    now: () => Date.now(),
-    schedule: (fn, ms) => setTimeout(fn, ms),
-    cancelSchedule: (handle) => {
-      if (handle !== undefined) clearTimeout(handle as NodeJS.Timeout);
-    },
-  };
+      captureResolve = resolve;
+      captureOwner = sessionKey;
+      captureCompromised = false;
+      pendingStop = false;
 
-  const ptt = new PushToTalk(effects);
+      void (async () => {
+        try {
+          const release = await tryAcquireCaptureLock(CAPTURE_LOCK_TARGET, (error) => {
+            if (captureOwner !== sessionKey) return;
+            captureCompromised = true;
+            recError = `voice capture lock was lost: ${error.message}`;
+            pendingStop = true;
+            if (recProc) interruptCapture(recProc);
+          });
+          if (!release) {
+            recError = "another Pi session is already recording";
+            finishCapture(null);
+            return;
+          }
+          captureLockRelease = release;
 
-  function enableStandaloneKeyEvents(): void {
-    if (keyboardProtocolPushed || !process.stdout.isTTY) return;
-    process.stdout.write(ENABLE_STANDALONE_KEY_EVENTS);
-    keyboardProtocolPushed = true;
+          const dir = await mkdtemp(join(tmpdir(), "pi-asr-"));
+          // The session may have closed while the lock or temporary directory
+          // was being acquired. Do not start an orphan microphone process.
+          if (
+            !sessions.has(sessionKey) ||
+            captureOwner !== sessionKey ||
+            captureCompromised
+          ) {
+            await rm(dir, { recursive: true, force: true });
+            await releaseActiveCaptureLock();
+            finishCapture(null);
+            return;
+          }
+
+          recDir = dir;
+          const out = join(dir, "capture.wav");
+          recError = "";
+          const proc = spawn("rec", buildRecArgs(out, autoStopOnSilence), {
+            stdio: ["ignore", "ignore", "pipe"],
+          });
+          recProc = proc;
+          let finalized = false;
+          const finalize = async (path: string | null) => {
+            if (finalized) return;
+            finalized = true;
+            if (recProc === proc) recProc = undefined;
+            if (recDir === dir) recDir = undefined;
+            pendingStop = false;
+            let completedPath = captureCompromised ? null : path;
+            await releaseActiveCaptureLock();
+            // A compromise can race with process exit or lock release; check
+            // again before handing audio to transcription.
+            if (captureCompromised) completedPath = null;
+            if (!completedPath) await rm(dir, { recursive: true, force: true });
+            finishCapture(completedPath);
+          };
+          proc.stderr?.on("data", (chunk: Buffer) => {
+            recError = (recError + chunk.toString()).replace(/\s+/g, " ").trim().slice(0, 300);
+          });
+          proc.on("error", (error: NodeJS.ErrnoException) => {
+            recError =
+              error.code === "ENOENT"
+                ? "rec (SoX) is not installed — run `brew install sox`"
+                : error.message;
+            // A spawn failure has no child to wait for. Later errors can come
+            // from a failed kill signal while `rec` is still alive; retain the
+            // cross-process lock until its close event in that case.
+            if (proc.pid === undefined) void finalize(null);
+          });
+          proc.on("close", () => {
+            // A valid non-empty WAV means the capture succeeded, even if the
+            // exit code is nonzero (SIGINT stop or silence auto-stop).
+            let ok = false;
+            try {
+              ok = statSync(out).size > 44;
+            } catch {
+              // Shutdown may remove the temporary directory before close.
+            }
+            void finalize(ok ? out : null);
+          });
+          if (pendingStop) interruptCapture(proc);
+        } catch (error) {
+          recError = error instanceof Error ? error.message : String(error);
+          await releaseActiveCaptureLock();
+          finishCapture(null);
+        }
+      })();
+    });
   }
 
-  function restoreKeyboardProtocol(): void {
-    if (!keyboardProtocolPushed) return;
+  /** Stop the in-flight capture, but only if this session owns it. */
+  function stopCaptureFor(sessionKey: string): void {
+    if (captureOwner !== undefined && captureOwner !== sessionKey) return;
+    pendingStop = true;
+    const proc = recProc;
+    if (proc) interruptCapture(proc);
+  }
+
+  /** Stop whatever capture is running (used when the last session closes). */
+  function forceStopCapture(): void {
+    pendingStop = true;
+    const proc = recProc;
+    if (proc) interruptCapture(proc);
+  }
+
+  /** Build the per-session push-to-talk machine and its UI bindings. All
+   *  effects are bound to this session's context, so status messages,
+   *  notifications, transcription context, and editor insertion stay in the
+   *  session that triggered the recording. */
+  function createSessionRuntime(ctx: ExtensionContext, key: string): SessionRuntime {
+    const runtime: SessionRuntime = {
+      ctx,
+      profile: mergeAsrProfiles(
+        GLOBAL_ASR_PROFILE,
+        resolveAsrProjectProfile(ctx.cwd, ctx.isProjectTrusted()),
+      ),
+      ptt: undefined!, // Assigned below, before the runtime is used.
+      status: undefined,
+      unsubscribe: undefined,
+    };
+    // Always dereference runtime.ctx: session reload/resume can replace the UI
+    // context while a capture or transcription is still in flight.
+    const notify = (message: string, type?: "info" | "warning" | "error") =>
+      runtime.ctx.ui.notify(message, type);
+    const setStatus = (text: string | undefined) => {
+      runtime.status = text;
+      runtime.ctx.ui.setStatus(STATUS_KEY, text);
+    };
+    const effects: CaptureEffects = {
+      notify,
+      setStatus,
+      startCapture: (autoStopOnSilence) => startCaptureFor(key, autoStopOnSilence),
+      stopCapture: () => stopCaptureFor(key),
+      lastCaptureError: () => recError,
+      cleanupAudio: async (audioPath) => {
+        if (!audioPath) return;
+        await rm(dirname(audioPath), { recursive: true, force: true }).catch(() => {});
+      },
+      transcribe: async (audioPath) => {
+        const { apiKey, baseUrl } = getDashScopeCredentials();
+        if (!apiKey) {
+          throw new Error(
+            "DASHSCOPE_API_KEY is not set. Add it to ~/.pi/agent/.env or your environment, then /reload.",
+          );
+        }
+        if (!baseUrl) {
+          throw new Error(
+            "DASHSCOPE_BASE_URL is not set. Add it to ~/.pi/agent/.env or your environment, then /reload.",
+          );
+        }
+        return transcribeAudio(audioPath, apiKey, baseUrl, runtime.profile);
+      },
+      refineTranscript: async (text) => {
+        // Total: a missing key, network failure, or empty result keeps the
+        // raw transcript; the deterministic cleanup in insertTranscript still
+        // applies afterwards. The merged ASR profile (global + project) is
+        // passed along so the LLM sees the same context and terminology
+        // that DashScope received.
+        const apiKey = getOpenRouterKey();
+        if (!apiKey) return text;
+        return refineTranscriptWithOpenRouter(text, apiKey, runtime.profile).catch(() => text);
+      },
+      insertTranscript: (text) => {
+        // Deterministic post-processing right before insertion: strips fillers
+        // and discourse markers; nothing meaningful left means no speech.
+        const cleaned = prepareTranscriptForInsert(text);
+        if (!cleaned) {
+          runtime.ctx.ui.notify("No speech detected — try again.", "warning");
+          return;
+        }
+        // An empty editor gets a brief voice-transcription note so the agent
+        // knows the text came from dictation and may contain errors.
+        const toInsert = applyVoicePrefix(runtime.ctx.ui.getEditorText(), cleaned);
+        runtime.ctx.ui.pasteToEditor(toInsert);
+        const preview = toInsert.length > 100 ? `${toInsert.slice(0, 100)}…` : toInsert;
+        runtime.ctx.ui.notify(`Inserted: ${preview}`, "info");
+      },
+      now: () => Date.now(),
+      schedule: (fn, ms) => setTimeout(fn, ms),
+      cancelSchedule: (handle) => {
+        if (handle !== undefined) clearTimeout(handle as NodeJS.Timeout);
+      },
+    };
+    runtime.ptt = new PushToTalk(effects);
+    return runtime;
+  }
+
+  function enableTerminalProtocols(): void {
+    if (!process.stdout.isTTY) return;
+    if (!terminalProtocolsEnabled) {
+      process.stdout.write(ENABLE_STANDALONE_KEY_EVENTS);
+      terminalProtocolsEnabled = true;
+    }
+    // Reissuing mode 1004 asks Ghostty to report the current focus state to a
+    // newly installed/replaced listener even when the mode was already on.
+    process.stdout.write(ENABLE_FOCUS_TRACKING);
+  }
+
+  function restoreTerminalProtocols(): void {
+    if (!terminalProtocolsEnabled) return;
     try {
+      process.stdout.write(DISABLE_FOCUS_TRACKING);
       process.stdout.write(RESTORE_KEYBOARD_PROTOCOL);
     } finally {
-      keyboardProtocolPushed = false;
+      terminalProtocolsEnabled = false;
     }
   }
 
-  function setup(ctx: ExtensionContext): void {
-    currentCtx = ctx;
-    currentProjectProfile = mergeAsrProfiles(
-      GLOBAL_ASR_PROFILE,
-      resolveAsrProjectProfile(ctx.cwd, ctx.isProjectTrusted()),
-    );
-    if (ctx.mode === "tui" && ctx.hasUI && !unsubscribe) {
-      enableStandaloneKeyEvents();
-      unsubscribe = ctx.ui.onTerminalInput((data) => ptt.handleInput(data));
+  /** Bind (or refresh) voice state for a session. Returns the session's
+   *  push-to-talk machine so callers can drive it directly. */
+  function setup(ctx: ExtensionContext): SessionRuntime {
+    const key = sessionKeyOf(ctx);
+    let runtime = sessions.get(key);
+    if (!runtime) {
+      runtime = createSessionRuntime(ctx, key);
+      sessions.set(key, runtime);
+    } else {
+      // Same session restarted (reload/resume): refresh the context and move
+      // the terminal listener to the replacement UI.
+      if (runtime.ctx !== ctx) {
+        runtime.unsubscribe?.();
+        runtime.unsubscribe = undefined;
+        runtime.ctx.ui.setStatus(STATUS_KEY, undefined);
+        runtime.ctx = ctx;
+        runtime.ctx.ui.setStatus(STATUS_KEY, runtime.status);
+      }
+      runtime.profile = mergeAsrProfiles(
+        GLOBAL_ASR_PROFILE,
+        resolveAsrProjectProfile(ctx.cwd, ctx.isProjectTrusted()),
+      );
     }
+    if (ctx.mode === "tui" && ctx.hasUI) {
+      const r = runtime;
+      if (!r.unsubscribe) {
+        // Register before enabling focus tracking: Ghostty immediately reports
+        // this split's current focus state in response to CSI ? 1004 h.
+        r.unsubscribe = ctx.ui.onTerminalInput((data) => r.ptt.handleInput(data));
+        enableTerminalProtocols();
+      }
+    }
+    return runtime;
   }
 
-  pi.on("session_start", (_event, ctx) => setup(ctx));
-  pi.on("session_shutdown", () => {
-    shuttingDown = true;
-    unsubscribe?.();
-    unsubscribe = undefined;
-    restoreKeyboardProtocol();
-    ptt.shutdown();
-    currentCtx = undefined;
-    currentProjectProfile = undefined;
-    operationCtx = undefined;
-    operationProjectProfile = undefined;
-    if (recDir) {
-      const dir = recDir;
-      recDir = undefined;
-      void rm(dir, { recursive: true, force: true });
+  pi.on("session_start", (_event, ctx) => {
+    setup(ctx);
+  });
+
+  pi.on("session_shutdown", (_event, ctx) => {
+    const key = sessionKeyOf(ctx);
+    const runtime = sessions.get(key);
+    // A reload/resume can replace the context before the old context emits
+    // its delayed shutdown. Ignore that stale event; it no longer owns this
+    // session runtime.
+    if (runtime?.ctx === ctx) {
+      runtime.unsubscribe?.();
+      runtime.unsubscribe = undefined;
+      runtime.ptt.shutdown();
+      runtime.ctx.ui.setStatus(STATUS_KEY, undefined);
+      sessions.delete(key);
+    }
+    if (![...sessions.values()].some((candidate) => candidate.unsubscribe)) {
+      restoreTerminalProtocols();
+    }
+    if (sessions.size === 0) {
+      // Last session closed: stop any capture so the microphone is released
+      // and drop leftover temp audio. The extension stays usable for sessions
+      // that start later.
+      forceStopCapture();
+      if (recDir) {
+        const dir = recDir;
+        recDir = undefined;
+        void rm(dir, { recursive: true, force: true });
+      }
     }
   });
 
@@ -1267,8 +1802,8 @@ export default function (pi: ExtensionAPI): void {
     description:
       "Record from the microphone until silence, transcribe (DashScope qwen-audio-3.0-asr-flash), and insert at the editor cursor. Same engine as hold-Shift dictation.",
     handler: async (_args, ctx) => {
-      setup(ctx);
-      await ptt.runVoiceCommand();
+      const runtime = setup(ctx);
+      await runtime.ptt.runVoiceCommand();
     },
   });
 }
