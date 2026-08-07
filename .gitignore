@@ -15,6 +15,9 @@ agent/run-history.jsonl
 agent/cache/
 agent/progress.md
 progress.md
+agent/cursor-sdk-context-windows.json
+agent/models-store.json
+remote/
 
 # Local package caches and dependencies
 .pi/npm/
