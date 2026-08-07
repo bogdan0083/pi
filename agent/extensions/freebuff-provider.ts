@@ -996,11 +996,21 @@ export default function (pi: ExtensionAPI) {
 				cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
 				contextWindow: 1048576,
 				maxTokens: 131072,
+				// DeepSeek-direct route: native `thinking` toggle, reasoning_content
+				// in the stream. reasoning_effort passes through to the upstream
+				// DeepSeek API, which accepts "high" and "max" (same map as the
+				// direct `deepseek` provider); minimal/low/medium are unsupported
+				// upstream and stay disabled (they clamp to the next level).
+				thinkingLevelMap: {
+					minimal: null,
+					low: null,
+					medium: null,
+					high: "high",
+					max: "max",
+				},
 				compat: {
-					// DeepSeek-direct route: native `thinking` toggle, reasoning_content
-					// in the stream. No reasoning_effort (the model self-manages).
 					thinkingFormat: "deepseek",
-					supportsReasoningEffort: false,
+					supportsReasoningEffort: true,
 					supportsDeveloperRole: false,
 				},
 			},
@@ -1028,9 +1038,16 @@ export default function (pi: ExtensionAPI) {
 				cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
 				contextWindow: 1048576,
 				maxTokens: 131072,
+				thinkingLevelMap: {
+					minimal: null,
+					low: null,
+					medium: null,
+					high: "high",
+					max: "max",
+				},
 				compat: {
 					thinkingFormat: "deepseek",
-					supportsReasoningEffort: false,
+					supportsReasoningEffort: true,
 					supportsDeveloperRole: false,
 				},
 			},

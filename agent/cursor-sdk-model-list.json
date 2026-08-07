@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "fetchedAt": 1785739092245,
+  "fetchedAt": 1786001367848,
   "keyFingerprint": "a1fa565ba7502341",
   "models": [
     {
@@ -259,6 +259,10 @@
         {
           "params": [
             {
+              "id": "cyber",
+              "value": "false"
+            },
+            {
               "id": "thinking",
               "value": "false"
             },
@@ -279,6 +283,10 @@
         },
         {
           "params": [
+            {
+              "id": "cyber",
+              "value": "false"
+            },
             {
               "id": "thinking",
               "value": "false"
@@ -300,6 +308,10 @@
         },
         {
           "params": [
+            {
+              "id": "cyber",
+              "value": "false"
+            },
             {
               "id": "thinking",
               "value": "false"
@@ -322,6 +334,10 @@
         {
           "params": [
             {
+              "id": "cyber",
+              "value": "false"
+            },
+            {
               "id": "thinking",
               "value": "false"
             },
@@ -343,6 +359,10 @@
         {
           "params": [
             {
+              "id": "cyber",
+              "value": "false"
+            },
+            {
               "id": "thinking",
               "value": "false"
             },
@@ -363,6 +383,10 @@
         },
         {
           "params": [
+            {
+              "id": "cyber",
+              "value": "false"
+            },
             {
               "id": "thinking",
               "value": "false"
@@ -384,6 +408,10 @@
         },
         {
           "params": [
+            {
+              "id": "cyber",
+              "value": "false"
+            },
             {
               "id": "thinking",
               "value": "false"
@@ -406,6 +434,10 @@
         {
           "params": [
             {
+              "id": "cyber",
+              "value": "false"
+            },
+            {
               "id": "thinking",
               "value": "false"
             },
@@ -427,6 +459,10 @@
         {
           "params": [
             {
+              "id": "cyber",
+              "value": "false"
+            },
+            {
               "id": "thinking",
               "value": "false"
             },
@@ -447,6 +483,10 @@
         },
         {
           "params": [
+            {
+              "id": "cyber",
+              "value": "false"
+            },
             {
               "id": "thinking",
               "value": "false"
@@ -469,6 +509,10 @@
         {
           "params": [
             {
+              "id": "cyber",
+              "value": "false"
+            },
+            {
               "id": "thinking",
               "value": "false"
             },
@@ -489,6 +533,10 @@
         },
         {
           "params": [
+            {
+              "id": "cyber",
+              "value": "false"
+            },
             {
               "id": "thinking",
               "value": "false"
@@ -510,6 +558,10 @@
         },
         {
           "params": [
+            {
+              "id": "cyber",
+              "value": "false"
+            },
             {
               "id": "thinking",
               "value": "true"
@@ -532,6 +584,10 @@
         {
           "params": [
             {
+              "id": "cyber",
+              "value": "false"
+            },
+            {
               "id": "thinking",
               "value": "true"
             },
@@ -553,6 +609,10 @@
         {
           "params": [
             {
+              "id": "cyber",
+              "value": "false"
+            },
+            {
               "id": "thinking",
               "value": "true"
             },
@@ -574,6 +634,10 @@
         {
           "params": [
             {
+              "id": "cyber",
+              "value": "false"
+            },
+            {
               "id": "thinking",
               "value": "true"
             },
@@ -594,6 +658,10 @@
         },
         {
           "params": [
+            {
+              "id": "cyber",
+              "value": "false"
+            },
             {
               "id": "thinking",
               "value": "true"
@@ -616,6 +684,10 @@
         {
           "params": [
             {
+              "id": "cyber",
+              "value": "false"
+            },
+            {
               "id": "thinking",
               "value": "true"
             },
@@ -636,6 +708,10 @@
         },
         {
           "params": [
+            {
+              "id": "cyber",
+              "value": "false"
+            },
             {
               "id": "thinking",
               "value": "true"
@@ -658,6 +734,10 @@
         {
           "params": [
             {
+              "id": "cyber",
+              "value": "false"
+            },
+            {
               "id": "thinking",
               "value": "true"
             },
@@ -679,6 +759,10 @@
         {
           "params": [
             {
+              "id": "cyber",
+              "value": "false"
+            },
+            {
               "id": "thinking",
               "value": "true"
             },
@@ -700,6 +784,10 @@
         {
           "params": [
             {
+              "id": "cyber",
+              "value": "false"
+            },
+            {
               "id": "thinking",
               "value": "true"
             },
@@ -720,6 +808,10 @@
         },
         {
           "params": [
+            {
+              "id": "cyber",
+              "value": "false"
+            },
             {
               "id": "thinking",
               "value": "true"
@@ -742,6 +834,10 @@
         {
           "params": [
             {
+              "id": "cyber",
+              "value": "false"
+            },
+            {
               "id": "thinking",
               "value": "true"
             },
@@ -762,6 +858,10 @@
         },
         {
           "params": [
+            {
+              "id": "cyber",
+              "value": "false"
+            },
             {
               "id": "thinking",
               "value": "true"
@@ -784,6 +884,10 @@
         {
           "params": [
             {
+              "id": "cyber",
+              "value": "false"
+            },
+            {
               "id": "thinking",
               "value": "true"
             },
@@ -804,6 +908,10 @@
         },
         {
           "params": [
+            {
+              "id": "cyber",
+              "value": "false"
+            },
             {
               "id": "thinking",
               "value": "true"
@@ -827,6 +935,10 @@
         {
           "params": [
             {
+              "id": "cyber",
+              "value": "false"
+            },
+            {
               "id": "thinking",
               "value": "true"
             },
@@ -848,6 +960,10 @@
         {
           "params": [
             {
+              "id": "cyber",
+              "value": "false"
+            },
+            {
               "id": "thinking",
               "value": "true"
             },
@@ -869,6 +985,10 @@
         {
           "params": [
             {
+              "id": "cyber",
+              "value": "false"
+            },
+            {
               "id": "thinking",
               "value": "true"
             },
@@ -889,6 +1009,10 @@
         },
         {
           "params": [
+            {
+              "id": "cyber",
+              "value": "false"
+            },
             {
               "id": "thinking",
               "value": "true"
@@ -910,6 +1034,10 @@
         },
         {
           "params": [
+            {
+              "id": "cyber",
+              "value": "false"
+            },
             {
               "id": "thinking",
               "value": "true"
