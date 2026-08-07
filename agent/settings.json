@@ -1,7 +1,7 @@
 {
-  "lastChangelogVersion": "0.83.0",
-  "defaultProvider": "openai-codex",
-  "defaultModel": "gpt-5.6-sol",
+  "lastChangelogVersion": "0.84.0",
+  "defaultProvider": "cursor",
+  "defaultModel": "grok-4.5",
   "defaultThinkingLevel": "high",
   "packages": [
     "extensions/read-directories.ts",
@@ -12,5 +12,10 @@
     "npm:pi-cursor-sdk"
   ],
   "hideThinkingBlock": true,
-  "theme": "dark"
+  "theme": "dark",
+  "retry": {
+    "enabled": true,
+    "maxRetries": 10,
+    "baseDelayMs": 5000
+  }
 }
