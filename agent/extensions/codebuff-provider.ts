@@ -27,6 +27,7 @@ const PROVIDER_ORDER: Record<string, string[]> = {
 	"anthropic/claude-sonnet-4.6": ["Google", "Anthropic", "Amazon Bedrock"],
 	"anthropic/claude-opus-4.7": ["Google", "Anthropic"],
 	"z-ai/glm-5.2": ["baseten/fast"],
+	"deepseek/deepseek-v4-flash-0731": ["Novita"],
 };
 
 interface LoginCodeResponse {
@@ -471,6 +472,33 @@ export default function (pi: ExtensionAPI) {
 				compat: {
 					thinkingFormat: "openrouter",
 					supportsReasoningEffort: true,
+					supportsDeveloperRole: false,
+				},
+			},
+			{
+				id: "deepseek/deepseek-v4-flash-0731",
+				name: "DeepSeek V4 Flash 07/31 (Codebuff)",
+				reasoning: true,
+				thinkingLevelMap: {
+					minimal: null,
+					low: null,
+					medium: null,
+					high: "high",
+					xhigh: "xhigh",
+					max: null,
+				},
+				input: ["text"],
+				cost: { input: 0.09, output: 0.18, cacheRead: 0.018, cacheWrite: 0 },
+				contextWindow: 1048576,
+				maxTokens: 65536,
+				// Forced to Novita via PROVIDER_ORDER (OpenRouter provider name is
+				// "Novita", not "NovitaAI"). "DeepSeek" yields no routeable
+				// endpoints (404 "No endpoints found") through this backend.
+				// OpenRouter-like backend, so thinking/reasoning_content follow the
+				// openrouter format.
+				compat: {
+					thinkingFormat: "openrouter",
+					requiresReasoningContentOnAssistantMessages: true,
 					supportsDeveloperRole: false,
 				},
 			},

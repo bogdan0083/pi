@@ -34,6 +34,7 @@ const {
   applySpokenFormMap,
   mergeAsrProfiles,
   PushToTalk,
+  consumeControlC,
   buildAsrContextMessages,
   buildAsrContextText,
   buildHotwords,
@@ -158,6 +159,27 @@ const FOCUS_IN = "\x1b[I";
 const FOCUS_OUT = "\x1b[O";
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
+
+console.log("terminal input: CSI-u Ctrl+C release is consumed before shutdown");
+{
+  let secondPresses = 0;
+  const now = Date.now;
+  try {
+    Date.now = () => 1000;
+    eq(consumeControlC("\x1b[99;5:1u", () => secondPresses++), false, "Ctrl+C press reaches Pi");
+    Date.now = () => 1200;
+    eq(consumeControlC("\x1b[99;5:1u", () => secondPresses++), false, "second Ctrl+C press reaches Pi");
+    eq(secondPresses, 1, "second Ctrl+C press invokes the shutdown callback");
+    eq(consumeControlC("\x1b[99;5:3u"), true, "Ctrl+C release is consumed");
+    eq(consumeControlC("abc\x1b[99;5:3u"), true, "mixed text plus release is filtered");
+    eq(consumeControlC("\x1b[99;5:"), true, "fragmented release prefix is buffered");
+    eq(consumeControlC("3u"), true, "fragmented release tail is filtered");
+    eq(consumeControlC("\x1b[9;5:3u"), false, "truncated non-Ctrl sequence is not treated as Ctrl+C");
+    eq(consumeControlC("\x1b[99;2:1u"), false, "Alt+C press is not treated as Ctrl+C");
+  } finally {
+    Date.now = now;
+  }
+}
 
 console.log("capture lock: only one Pi process can own the microphone");
 {

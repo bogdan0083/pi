@@ -126,7 +126,7 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import { execFileSync, spawn, type ChildProcess } from "node:child_process";
-import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, statSync, writeSync } from "node:fs";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
@@ -610,6 +610,102 @@ const ENABLE_FOCUS_TRACKING = "\x1b[?1004h";
 const DISABLE_FOCUS_TRACKING = "\x1b[?1004l";
 const FOCUS_EVENT = /\x1b\[([IO])/g;
 
+// With report-all-keys enabled, Ctrl+C is delivered as CSI-u instead of the
+// usual ETX/SIGINT. If Pi exits on the second press, the terminal can send the
+// matching key-release event after keyboard mode has already been restored;
+// the shell then displays it as literal text (for example `^[[99;5:3u`).
+// Detect Pi's existing double-Ctrl+C shutdown gesture on the press event and
+// restore the terminal before Pi processes that press. The release then uses
+// the shell's normal mode and cannot leak CSI-u bytes into the prompt.
+let lastControlCPressMs = 0;
+let controlCInputBuffer = "";
+const CONTROL_C_EVENT = /\x1b\[99(?:;(\d+))?(?::([123]))?u/g;
+const CONTROL_C_PREFIX = /^\x1b\[99(?:;\d*)?(?::[123]?)?$/;
+
+function restoreActiveTerminalProtocols(): void {
+  for (const cleanup of activeTerminalProtocolCleanups) cleanup();
+}
+
+interface ControlCFilterResult {
+  data: string;
+  consumedRelease: boolean;
+}
+
+function filterControlC(
+  data: string,
+  onSecondPress: () => void = () => {},
+): ControlCFilterResult {
+  const input = controlCInputBuffer + data;
+  controlCInputBuffer = "";
+  let consumedRelease = false;
+  let output = "";
+  let cursor = 0;
+  CONTROL_C_EVENT.lastIndex = 0;
+
+  let match: RegExpExecArray | null;
+  while ((match = CONTROL_C_EVENT.exec(input)) !== null) {
+    output += input.slice(cursor, match.index);
+    const modifierField = match[1] === undefined ? 1 : Number(match[1]);
+    const modifiers = modifierField - 1;
+    // Ctrl is bit 4. Ignore Ctrl+Alt/Shift/Super/etc.; allow lock bits.
+    if ((modifiers & 31) !== 4) {
+      output += match[0];
+    } else {
+      const eventType = match[2] === undefined ? 1 : Number(match[2]);
+      if (eventType === 1) {
+        const now = Date.now();
+        if (now - lastControlCPressMs < 500) onSecondPress();
+        lastControlCPressMs = now;
+        // Preserve the press for Pi's normal first/second Ctrl+C handling.
+        output += match[0];
+      } else if (eventType === 3) {
+        consumedRelease = true;
+        // Drop the release so it cannot reach the shell after shutdown.
+      } else {
+        output += match[0];
+      }
+    }
+    cursor = CONTROL_C_EVENT.lastIndex;
+  }
+
+  const tail = input.slice(cursor);
+  const lastCsi = tail.lastIndexOf("\x1b[");
+  if (lastCsi >= 0 && CONTROL_C_PREFIX.test(tail.slice(lastCsi))) {
+    output += tail.slice(0, lastCsi);
+    controlCInputBuffer = tail.slice(lastCsi);
+    consumedRelease = true;
+  } else {
+    output += tail;
+  }
+  return { data: output, consumedRelease };
+}
+
+export function consumeControlC(
+  data: string,
+  onSecondPress: () => void = () => {},
+): boolean {
+  return filterControlC(data, onSecondPress).consumedRelease;
+}
+
+// Keep emergency terminal cleanup process-wide. The extension may be
+// reloaded in the same Node process, so retain every registered owner rather
+// than letting a newer instance replace an older owner's cleanup callback.
+const activeTerminalProtocolCleanups = new Set<() => void>();
+let terminalCleanupHandlersInstalled = false;
+
+function registerTerminalCleanup(cleanup: () => void): void {
+  activeTerminalProtocolCleanups.add(cleanup);
+  if (terminalCleanupHandlersInstalled) return;
+  terminalCleanupHandlersInstalled = true;
+
+  // `exit` only permits synchronous work. Signal handlers are deliberately
+  // not installed here: Pi owns SIGINT/SIGTERM and an extension must not
+  // bypass its shutdown sequence or change the host's signal semantics.
+  process.once("exit", () => {
+    for (const ownerCleanup of activeTerminalProtocolCleanups) ownerCleanup();
+  });
+}
+
 interface ShiftKeyEvent {
   key: 57441 | 57447;
   type: 1 | 2 | 3;
@@ -692,6 +788,13 @@ export class PushToTalk {
 
   /** Raw terminal input listener (feed from ctx.ui.onTerminalInput). */
   handleInput(data: string): KeyHandlerResult {
+    // Detect double-Ctrl+C before Pi's core sees the press. Preserve presses so
+    // Pi keeps its normal first/second Ctrl+C behavior, but remove release
+    // events so a shutdown race cannot leak CSI-u bytes into the shell.
+    const controlC = filterControlC(data, restoreActiveTerminalProtocols);
+    data = controlC.data;
+    if (controlC.consumedRelease && !data) return { consume: true };
+
     // Focus reports and a key event may be coalesced in one stdin chunk. Strip
     // every report first while preserving any ordinary input for Pi's editor.
     let hadFocusEvent = false;
@@ -722,7 +825,7 @@ export class PushToTalk {
       // Flag 8 also reports other standalone modifier/lock keys. They are
       // terminal state, not editor text, so keep their CSI-u sequences out.
       if (MODIFIER_KEY_EVENT.test(data) || LOCK_KEY_EVENT.test(data)) return { consume: true };
-      return hadFocusEvent ? { data } : undefined;
+      return controlC.consumedRelease || hadFocusEvent ? { data } : undefined;
     }
 
     // Standalone modifier sequences are not editor input; always consume them.
@@ -1720,15 +1823,41 @@ export default function (pi: ExtensionAPI): void {
     process.stdout.write(ENABLE_FOCUS_TRACKING);
   }
 
-  function restoreTerminalProtocols(): void {
+  function restoreTerminalProtocols(synchronous = false): void {
     if (!terminalProtocolsEnabled) return;
     try {
-      process.stdout.write(DISABLE_FOCUS_TRACKING);
-      process.stdout.write(RESTORE_KEYBOARD_PROTOCOL);
+      const reset = `${DISABLE_FOCUS_TRACKING}${RESTORE_KEYBOARD_PROTOCOL}`;
+      if (synchronous) {
+        const fd = process.stdout.fd;
+        if (typeof fd === "number") writeSync(fd, reset);
+      } else {
+        process.stdout.write(DISABLE_FOCUS_TRACKING);
+        process.stdout.write(RESTORE_KEYBOARD_PROTOCOL);
+      }
     } finally {
       terminalProtocolsEnabled = false;
     }
   }
+
+  // `session_shutdown` is not guaranteed to run when the host process exits
+  // (for example, when it receives SIGTERM or an uncaught exception). Kitty's
+  // keyboard mode belongs to the terminal, not the Node process, so leaving
+  // it enabled makes the next shell receive CSI-u sequences as literal input.
+  // The pre-shutdown Ctrl+C path and the exit event only permit reliable
+  // synchronous work; writeSync ensures the reset reaches the TTY before Pi
+  // closes its streams. The callback is registered process-wide so extension
+  // reloads cannot leave a stale cleanup closure.
+  registerTerminalCleanup(() => {
+    if (!terminalProtocolsEnabled) return;
+    try {
+      restoreTerminalProtocols(true);
+    } catch {
+      // The terminal may already be unavailable (for example in a detached
+      // process); there is nothing else to clean up here.
+    } finally {
+      terminalProtocolsEnabled = false;
+    }
+  });
 
   /** Bind (or refresh) voice state for a session. Returns the session's
    *  push-to-talk machine so callers can drive it directly. */
