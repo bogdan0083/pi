@@ -22,7 +22,9 @@
  *      fields:
  *        codebuff_metadata: { freebuff_instance_id, run_id, client_id,
  *                             trace_session_id, cost_mode: "free" }
- *        provider: { allow_fallbacks: true }
+ *        provider: { allow_fallbacks: false }  // match freebuff CLI for
+ *          explicitly defined models — true lets OpenRouter fall through to
+ *          `:free` variants and hit free-models-per-day-* caps
  *      and — anti-abuse gate — the first system message must open with the
  *      canonical Buffy marker (FREEBUFF_ROOT_SYSTEM_PROMPT_OPENINGS), so the
  *      marker is prepended to pi's system prompt (pi's prompt follows intact).
@@ -830,9 +832,14 @@ export default function (pi: ExtensionAPI) {
 				trace_session_id: traceSessionId,
 				cost_mode: "free",
 			},
+			// Freebuff CLI sets allow_fallbacks: false for known models
+			// (isExplicitlyDefinedModel). Enabling fallbacks routes exhausted
+			// primaries onto OpenRouter `:free` variants and surfaces
+			// free-models-per-day-high-balance 429s that burn the retry budget.
 			provider: {
 				...((payload.provider as Record<string, unknown> | undefined) ?? {}),
-				allow_fallbacks: true,
+				allow_fallbacks: false,
+				data_collection: "deny",
 			},
 			usage: { include: true },
 		};
@@ -896,6 +903,30 @@ export default function (pi: ExtensionAPI) {
 	}
 
 	/**
+	 * OpenRouter daily free-model caps are account quotas, not transient
+	 * throttles. Rewrite so pi-ai's retry classifier treats them as
+	 * non-retryable ("quota exceeded") instead of matching bare "rate limit".
+	 */
+	function rewriteDailyFreeModelLimit(
+		event: AssistantMessageEvent,
+	): AssistantMessageEvent {
+		if (event.type !== "error") return event;
+		const msg = event.error.errorMessage ?? "";
+		if (!/free-models-per-day/i.test(msg)) return event;
+		return {
+			...event,
+			error: {
+				...event.error,
+				errorMessage:
+					"Freebuff upstream quota exceeded (OpenRouter free-models-per-day). " +
+					"Fallbacks onto :free variants are disabled; retrying won't help until " +
+					"the daily reset, or switch to a paid provider (codebuff / openai-codex). " +
+					`Original: ${msg}`,
+			},
+		};
+	}
+
+	/**
 	 * Stream with one transparent re-admission retry. Slot-loss errors arrive
 	 * as the stream's FIRST event — before any content — so the attempt can be
 	 * safely discarded and replayed after re-admitting, instead of failing the
@@ -909,14 +940,13 @@ export default function (pi: ExtensionAPI) {
 		retriesLeft: number,
 	) {
 		const inner = openaiStreamOnce(model, context, options);
-		if (retriesLeft <= 0) return inner;
 		const out = createAssistantMessageEventStream();
 		(async () => {
 			let isFirstEvent = true;
 			for await (const event of inner) {
 				if (isFirstEvent) {
 					isFirstEvent = false;
-					if (isSessionSlotError(event)) {
+					if (retriesLeft > 0 && isSessionSlotError(event)) {
 						sessions.invalidate();
 						detailsCache = undefined;
 						updateStatus();
@@ -933,7 +963,7 @@ export default function (pi: ExtensionAPI) {
 						return;
 					}
 				}
-				out.push(event);
+				out.push(rewriteDailyFreeModelLimit(event));
 			}
 			out.end();
 		})().catch((err: unknown) => {

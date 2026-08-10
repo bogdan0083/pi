@@ -8,12 +8,18 @@
  * profile selected from the Pi session's current project, then inserted into
  * the editor at the current cursor position.
  *
- * A quick Shift tap does nothing. Starting to type a shifted character
+ * Inside the herdr terminal multiplexer (HERDR_ENV=1) the gesture is
+ * hold Ctrl+Shift+Space instead of hold Shift: herdr does not forward
+ * standalone modifier-key press/release events to panes, so a bare Shift
+ * hold can never reach Pi there. Both gestures behave identically otherwise.
+ *
+ * A quick tap does nothing. Starting to type a shifted character
  * cancels a pending gesture, so normal capitalization keeps working.
  *
  * Controls
  * --------
  * - Hold Shift ≥ 2 s → listen; release Shift → transcribe + insert at cursor.
+ * - Inside herdr: hold Ctrl+Shift+Space ≥ 2 s → listen; release → insert.
  * - Tap Shift        → no action.
  * - /voice           → record from the microphone until silence, then
  *                      transcribe + insert (same engine; press Shift to stop).
@@ -121,6 +127,14 @@
  * this protocol. Legacy terminals such as Terminal.app cannot report a Shift
  * key by itself, so hold-Shift dictation is unavailable there; `/voice` still
  * works.
+ *
+ * herdr (HERDR_ENV=1) forwards modified regular keys to panes as CSI-u
+ * press/release events but drops standalone modifier keys: a bare Shift
+ * press/release never arrives, so hold-Shift cannot work inside herdr. The
+ * extension therefore falls back to holding Ctrl+Shift+Space there, which
+ * herdr delivers as clean CSI-u press and release events. Bare Shift is
+ * still accepted when it does arrive. The fallback is automatic; `/voice`
+ * works in every environment.
  */
 
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
@@ -602,6 +616,22 @@ const SHIFT_KEY_EVENT = /^\x1b\[(57441|57447)(?:;(\d+))?(?::([123]))?u$/;
 const MODIFIER_KEY_EVENT = /^\x1b\[(?:5744[1-9]|5745[0-4])(?:;\d+)?(?::[123])?u$/;
 const LOCK_KEY_EVENT = /^\x1b\[(?:57358|57359|57360)(?:;\d+)?(?::[123])?u$/;
 const LOCK_MODIFIER_MASK = 64 | 128; // Caps Lock | Num Lock.
+
+// herdr (terminal multiplexer) drops standalone modifier-key events: a bare
+// Shift press/release never reaches the pane, so hold-Shift cannot work
+// there. herdr does forward modified regular keys as CSI-u press/release
+// events, so inside herdr the gesture falls back to holding Ctrl+Shift+Space
+// (key 32 with the Shift|Ctrl modifier mask), which arrives as clean
+// press/release pairs. Bare Shift stays accepted in case herdr later
+// forwards it.
+const HERDR_ENV_DETECTED = process.env.HERDR_ENV === "1";
+/** Shift | Ctrl modifier mask as reported in CSI-u (modifier field minus 1). */
+const CTRL_SHIFT_SPACE_MASK = 1 | 4;
+/** `\x1b[32;6:1u` press / `\x1b[32;6:3u` release; tolerates an alternate-key
+ *  `:32` segment Ghostty may include. */
+const CTRL_SHIFT_SPACE_EVENT = /^\x1b\[32(?::\d+)?(?:;(\d+))?(?::([123]))?u$/;
+/** Human-readable trigger name used in status/notifications. */
+const GESTURE_LABEL = HERDR_ENV_DETECTED ? "Ctrl+Shift+Space" : "Shift";
 const ENABLE_STANDALONE_KEY_EVENTS = "\x1b[>15u"; // Push flags 1 | 2 | 4 | 8.
 const RESTORE_KEYBOARD_PROTOCOL = "\x1b[<u"; // Pop the mode pushed above.
 // DEC focus tracking is per terminal surface. Ghostty reports the current
@@ -706,12 +736,12 @@ function registerTerminalCleanup(cleanup: () => void): void {
   });
 }
 
-interface ShiftKeyEvent {
-  key: 57441 | 57447;
+interface TriggerKeyEvent {
+  key: number;
   type: 1 | 2 | 3;
 }
 
-function parseShiftKeyEvent(data: string): ShiftKeyEvent | undefined {
+function parseShiftKeyEvent(data: string): TriggerKeyEvent | undefined {
   const match = data.match(SHIFT_KEY_EVENT);
   if (!match) return undefined;
 
@@ -722,9 +752,31 @@ function parseShiftKeyEvent(data: string): ShiftKeyEvent | undefined {
   if (modifiers !== 0 && modifiers !== 1) return undefined;
 
   return {
-    key: Number(match[1]) as ShiftKeyEvent["key"],
-    type: (match[3] === undefined ? 1 : Number(match[3])) as ShiftKeyEvent["type"],
+    key: Number(match[1]),
+    type: (match[3] === undefined ? 1 : Number(match[3])) as TriggerKeyEvent["type"],
   };
+}
+
+/** herdr fallback trigger: Ctrl+Shift+Space. Strictly the Shift|Ctrl mask so
+ *  plain Space, Ctrl+Space, and Shift+Space still reach the editor. */
+function parseHerdrTrigger(data: string): TriggerKeyEvent | undefined {
+  const match = data.match(CTRL_SHIFT_SPACE_EVENT);
+  if (!match) return undefined;
+  const modifierField = match[1] === undefined ? 1 : Number(match[1]);
+  const modifiers = (modifierField - 1) & ~LOCK_MODIFIER_MASK;
+  if (modifiers !== CTRL_SHIFT_SPACE_MASK) return undefined;
+  return {
+    key: 32,
+    type: (match[2] === undefined ? 1 : Number(match[2])) as TriggerKeyEvent["type"],
+  };
+}
+
+/** The push-to-talk trigger in the current environment: bare Shift keys, plus
+ *  Ctrl+Shift+Space inside herdr where standalone modifiers never arrive. */
+function parseTriggerEvent(data: string): TriggerKeyEvent | undefined {
+  const shift = parseShiftKeyEvent(data);
+  if (shift) return shift;
+  return HERDR_ENV_DETECTED ? parseHerdrTrigger(data) : undefined;
 }
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -770,7 +822,7 @@ type PttState = "idle" | "pending" | "recording" | "transcribing";
 
 export class PushToTalk {
   private state: PttState = "idle";
-  private gestureKey: ShiftKeyEvent["key"] | undefined;
+  private gestureKey: number | undefined;
   private gestureStart = 0;
   private triggerTimer: unknown;
   private capTimer: unknown;
@@ -781,9 +833,12 @@ export class PushToTalk {
   private focused: boolean | undefined;
 
   private effects: CaptureEffects;
+  /** Trigger name shown in status/notifications ("Shift" or "Ctrl+Shift+Space"). */
+  private readonly gestureLabel: string;
 
-  constructor(effects: CaptureEffects) {
+  constructor(effects: CaptureEffects, gestureLabel = "Shift") {
     this.effects = effects;
+    this.gestureLabel = gestureLabel;
   }
 
   /** Raw terminal input listener (feed from ctx.ui.onTerminalInput). */
@@ -815,9 +870,10 @@ export class PushToTalk {
       return { consume: true };
     }
 
-    const shift = parseShiftKeyEvent(data);
-    if (!shift) {
-      // Shift used for ordinary typing must not become a push-to-talk hold.
+    const trigger = parseTriggerEvent(data);
+    if (!trigger) {
+      // A trigger key used for ordinary typing must not become a push-to-talk
+      // hold (e.g. a shifted character cancels a pending gesture).
       if (this.state === "pending") {
         this.cancelGesture();
         this.state = "idle";
@@ -828,10 +884,10 @@ export class PushToTalk {
       return controlC.consumedRelease || hadFocusEvent ? { data } : undefined;
     }
 
-    // Standalone modifier sequences are not editor input; always consume them.
+    // Trigger sequences are not editor input; always consume them.
     if (this.state === "transcribing") return { consume: true };
-    if (shift.type === 3) return this.onRelease(shift.key);
-    return this.onShiftPressOrRepeat(shift.key);
+    if (trigger.type === 3) return this.onRelease(trigger.key);
+    return this.onTriggerPressOrRepeat(trigger.key);
   }
 
   /** Record from the microphone until silence, then transcribe + insert. */
@@ -866,9 +922,9 @@ export class PushToTalk {
     this.state = "idle";
   }
 
-  // ── Shift events ───────────────────────────────────────────────────────────
+  // ── Trigger events (Shift, or Ctrl+Shift+Space inside herdr) ──────────────
 
-  private onShiftPressOrRepeat(key: ShiftKeyEvent["key"]): KeyHandlerResult {
+  private onTriggerPressOrRepeat(key: number): KeyHandlerResult {
     if (this.state === "recording") {
       // A Shift press stops /voice. Repeats from a key-driven hold are ignored.
       if (this.voiceCommand) this.requestStopCapture();
@@ -885,7 +941,7 @@ export class PushToTalk {
     return { consume: true };
   }
 
-  private onRelease(key: ShiftKeyEvent["key"]): KeyHandlerResult {
+  private onRelease(key: number): KeyHandlerResult {
     if (this.state === "recording") {
       if (this.voiceCommand || key === this.gestureKey) {
         this.requestStopCapture(); // finishCapture() continues when the process exits.
@@ -938,10 +994,14 @@ export class PushToTalk {
     this.voiceCommand = autoStopOnSilence;
     this.stopRequested = false;
     this.effects.setStatus(
-      autoStopOnSilence ? "🎙 Listening — stops on silence" : "🎙 Listening — release Shift to insert",
+      autoStopOnSilence
+        ? "🎙 Listening — stops on silence"
+        : `🎙 Listening — release ${this.gestureLabel} to insert`,
     );
     this.effects.notify(
-      autoStopOnSilence ? "Recording… stops on silence." : "Recording… release Shift when done.",
+      autoStopOnSilence
+        ? "Recording… stops on silence."
+        : `Recording… release ${this.gestureLabel} when done.`,
       "info",
     );
     this.capTimer = this.effects.schedule(() => {
@@ -1808,7 +1868,7 @@ export default function (pi: ExtensionAPI): void {
         if (handle !== undefined) clearTimeout(handle as NodeJS.Timeout);
       },
     };
-    runtime.ptt = new PushToTalk(effects);
+    runtime.ptt = new PushToTalk(effects, GESTURE_LABEL);
     return runtime;
   }
 

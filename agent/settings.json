@@ -5,6 +5,7 @@
   "defaultThinkingLevel": "xhigh",
   "packages": [
     "extensions/read-directories.ts",
+    "extensions/read-image-fallback.ts",
     "extensions/disable-grep.ts",
     "extensions/codebuff-provider.ts",
     "extensions/freebuff-provider.ts",

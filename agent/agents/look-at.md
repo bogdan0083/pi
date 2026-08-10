@@ -2,7 +2,7 @@
 name: look-at
 description: Read-only image, PDF, and media analyzer for extraction and comparison.
 tools: read, bash, ls
-model: openai-codex/gpt-5.6-luna
+model: google/gemini-3.6-flash
 thinking: xhigh
 systemPromptMode: replace
 inheritProjectContext: false

@@ -860,6 +860,66 @@ console.log("modifiers: Control and Ctrl+Shift cannot trigger PTT");
   eq(e.state.captures, [], "non-bare Shift modifiers do not record");
 }
 
+console.log("herdr: Ctrl+Shift+Space is the hold-to-talk trigger only inside herdr");
+{
+  const HERDR = process.env.HERDR_ENV === "1";
+  const CTRL_SHIFT_SPACE_PRESS = "\x1b[32;6:1u";
+  const CTRL_SHIFT_SPACE_REPEAT = "\x1b[32;6:2u";
+  const CTRL_SHIFT_SPACE_RELEASE = "\x1b[32;6:3u";
+  const CTRL_SHIFT_SPACE_ALTKEY = "\x1b[32:32;6:1u"; // alternate-key segment some terminals send
+  const CTRL_SPACE = "\x1b[32;5:1u";
+  const SHIFT_SPACE = "\x1b[32;2:1u";
+  const PLAIN_SPACE = "\x1b[32;1:1u";
+  const label = HERDR ? "Ctrl+Shift+Space" : "Shift";
+
+  const e = makeEffects();
+  const ptt = new PushToTalk(e, label);
+
+  if (HERDR) {
+    eq(ptt.handleInput(CTRL_SHIFT_SPACE_PRESS), { consume: true }, "Ctrl+Shift+Space press consumed as trigger");
+    eq(e.state.captures, [], "not recording yet");
+    eq(ptt.handleInput(CTRL_SHIFT_SPACE_REPEAT), { consume: true }, "repeat consumed while pending");
+    e.advance(2000);
+    eq(e.state.captures.length, 1, "Ctrl+Shift+Space starts capture after 2s hold");
+    eq(e.state.captures[0].autoStopOnSilence, false, "hold capture is not silence auto-stop");
+    ok(e.state.status.includes("Ctrl+Shift+Space"), "status names the herdr gesture");
+    eq(ptt.handleInput(CTRL_SHIFT_SPACE_RELEASE), { consume: true }, "release consumed");
+    eq(e.state.stops, 1, "release stops capture");
+    e.state.captureResolve("/tmp/fake/capture.wav");
+    await settle();
+    eq(e.state.sent, ["hello world"], "herdr hold-to-talk transcript sent");
+
+    const alt = makeEffects();
+    const altPtt = new PushToTalk(alt, label);
+    eq(
+      altPtt.handleInput(CTRL_SHIFT_SPACE_ALTKEY),
+      { consume: true },
+      "alternate-key variant still triggers and is consumed",
+    );
+    alt.advance(2000);
+    eq(alt.state.captures.length, 1, "alternate-key variant starts capture");
+    alt.state.captureResolve(null);
+    await settle();
+
+    // Other space chords must stay editor input.
+    const pass = makeEffects();
+    const passPtt = new PushToTalk(pass, label);
+    eq(passPtt.handleInput(PLAIN_SPACE), undefined, "plain Space reaches the editor");
+    eq(passPtt.handleInput(CTRL_SPACE), undefined, "Ctrl+Space reaches the editor");
+    eq(passPtt.handleInput(SHIFT_SPACE), undefined, "Shift+Space reaches the editor");
+    pass.advance(3000);
+    eq(pass.state.captures, [], "other space chords never record");
+  } else {
+    eq(
+      ptt.handleInput(CTRL_SHIFT_SPACE_PRESS),
+      undefined,
+      "Ctrl+Shift+Space reaches the editor outside herdr",
+    );
+    e.advance(3000);
+    eq(e.state.captures, [], "Ctrl+Shift+Space never triggers outside herdr");
+  }
+}
+
 console.log("kitty: releasing a second Shift does not end the initiating hold");
 {
   const e = makeEffects();

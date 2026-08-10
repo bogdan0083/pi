@@ -476,6 +476,30 @@ export default function (pi: ExtensionAPI) {
 				},
 			},
 			{
+				id: "meta/muse-spark-1.2",
+				name: "Muse Spark 1.2 (Codebuff)",
+				reasoning: true,
+				thinkingLevelMap: {
+					minimal: "minimal",
+					low: "low",
+					medium: "medium",
+					high: "high",
+					xhigh: "xhigh",
+				},
+				input: ["text", "image"],
+				cost: { input: 1.25, output: 4.25, cacheRead: 0.15, cacheWrite: 0 },
+				contextWindow: 1048576,
+				maxTokens: 131072,
+				// OpenRouter-like backend (same as GLM 5.2/Grok 4.5): reasoning is
+				// controlled via the normalized `reasoning` object, and the backend
+				// ignores the OpenAI `developer` role.
+				compat: {
+					thinkingFormat: "openrouter",
+					supportsReasoningEffort: true,
+					supportsDeveloperRole: false,
+				},
+			},
+			{
 				id: "deepseek/deepseek-v4-flash-0731",
 				name: "DeepSeek V4 Flash 07/31 (Codebuff)",
 				reasoning: true,
