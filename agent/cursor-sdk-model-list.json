@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "fetchedAt": 1786282640298,
+  "fetchedAt": 1787992960232,
   "keyFingerprint": "a1fa565ba7502341",
   "models": [
     {
@@ -18,8 +18,8 @@
       ]
     },
     {
-      "id": "grok-4.5",
-      "displayName": "Cursor Grok 4.5",
+      "id": "grok-4.6",
+      "displayName": "Cursor Grok 4.6",
       "parameters": [
         {
           "id": "effort",
@@ -36,6 +36,10 @@
             {
               "value": "high",
               "displayName": "High"
+            },
+            {
+              "value": "xhigh",
+              "displayName": "Extra High"
             }
           ]
         },
@@ -48,7 +52,7 @@
             },
             {
               "value": "true",
-              "displayName": "Fast​"
+              "displayName": "Fast​​"
             }
           ]
         }
@@ -65,7 +69,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Cursor Grok 4.5"
+          "displayName": "Cursor Grok 4.6"
         },
         {
           "params": [
@@ -78,7 +82,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Cursor Grok 4.5"
+          "displayName": "Cursor Grok 4.6"
         },
         {
           "params": [
@@ -91,7 +95,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Cursor Grok 4.5"
+          "displayName": "Cursor Grok 4.6"
         },
         {
           "params": [
@@ -104,7 +108,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Cursor Grok 4.5"
+          "displayName": "Cursor Grok 4.6"
         },
         {
           "params": [
@@ -117,7 +121,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Cursor Grok 4.5"
+          "displayName": "Cursor Grok 4.6"
         },
         {
           "params": [
@@ -130,8 +134,34 @@
               "value": "true"
             }
           ],
-          "displayName": "Cursor Grok 4.5",
+          "displayName": "Cursor Grok 4.6",
           "isDefault": true
+        },
+        {
+          "params": [
+            {
+              "id": "effort",
+              "value": "xhigh"
+            },
+            {
+              "id": "fast",
+              "value": "false"
+            }
+          ],
+          "displayName": "Cursor Grok 4.6"
+        },
+        {
+          "params": [
+            {
+              "id": "effort",
+              "value": "xhigh"
+            },
+            {
+              "id": "fast",
+              "value": "true"
+            }
+          ],
+          "displayName": "Cursor Grok 4.6"
         }
       ]
     },
@@ -182,7 +212,7 @@
     },
     {
       "id": "claude-opus-5",
-      "displayName": "Opus 5",
+      "displayName": "Claude Opus 5",
       "aliases": [
         "opus-latest",
         "opus",
@@ -279,7 +309,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 5"
+          "displayName": "Claude Opus 5"
         },
         {
           "params": [
@@ -304,7 +334,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 5"
+          "displayName": "Claude Opus 5"
         },
         {
           "params": [
@@ -329,7 +359,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 5"
+          "displayName": "Claude Opus 5"
         },
         {
           "params": [
@@ -354,7 +384,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 5"
+          "displayName": "Claude Opus 5"
         },
         {
           "params": [
@@ -379,7 +409,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 5"
+          "displayName": "Claude Opus 5"
         },
         {
           "params": [
@@ -404,7 +434,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 5"
+          "displayName": "Claude Opus 5"
         },
         {
           "params": [
@@ -429,7 +459,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 5"
+          "displayName": "Claude Opus 5"
         },
         {
           "params": [
@@ -454,7 +484,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 5"
+          "displayName": "Claude Opus 5"
         },
         {
           "params": [
@@ -479,7 +509,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 5"
+          "displayName": "Claude Opus 5"
         },
         {
           "params": [
@@ -504,7 +534,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 5"
+          "displayName": "Claude Opus 5"
         },
         {
           "params": [
@@ -529,7 +559,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 5"
+          "displayName": "Claude Opus 5"
         },
         {
           "params": [
@@ -554,7 +584,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 5"
+          "displayName": "Claude Opus 5"
         },
         {
           "params": [
@@ -579,7 +609,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 5"
+          "displayName": "Claude Opus 5"
         },
         {
           "params": [
@@ -604,7 +634,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 5"
+          "displayName": "Claude Opus 5"
         },
         {
           "params": [
@@ -629,7 +659,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 5"
+          "displayName": "Claude Opus 5"
         },
         {
           "params": [
@@ -654,7 +684,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 5"
+          "displayName": "Claude Opus 5"
         },
         {
           "params": [
@@ -679,7 +709,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 5"
+          "displayName": "Claude Opus 5"
         },
         {
           "params": [
@@ -704,7 +734,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 5"
+          "displayName": "Claude Opus 5"
         },
         {
           "params": [
@@ -729,7 +759,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 5"
+          "displayName": "Claude Opus 5"
         },
         {
           "params": [
@@ -754,7 +784,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 5"
+          "displayName": "Claude Opus 5"
         },
         {
           "params": [
@@ -779,7 +809,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 5"
+          "displayName": "Claude Opus 5"
         },
         {
           "params": [
@@ -804,7 +834,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 5"
+          "displayName": "Claude Opus 5"
         },
         {
           "params": [
@@ -829,7 +859,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 5"
+          "displayName": "Claude Opus 5"
         },
         {
           "params": [
@@ -854,7 +884,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 5"
+          "displayName": "Claude Opus 5"
         },
         {
           "params": [
@@ -879,7 +909,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 5"
+          "displayName": "Claude Opus 5"
         },
         {
           "params": [
@@ -904,7 +934,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 5"
+          "displayName": "Claude Opus 5"
         },
         {
           "params": [
@@ -929,7 +959,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 5",
+          "displayName": "Claude Opus 5",
           "isDefault": true
         },
         {
@@ -955,7 +985,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 5"
+          "displayName": "Claude Opus 5"
         },
         {
           "params": [
@@ -980,7 +1010,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 5"
+          "displayName": "Claude Opus 5"
         },
         {
           "params": [
@@ -1005,7 +1035,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 5"
+          "displayName": "Claude Opus 5"
         },
         {
           "params": [
@@ -1030,7 +1060,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 5"
+          "displayName": "Claude Opus 5"
         },
         {
           "params": [
@@ -1055,13 +1085,13 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 5"
+          "displayName": "Claude Opus 5"
         }
       ]
     },
     {
       "id": "claude-opus-4-8",
-      "displayName": "Opus 4.8",
+      "displayName": "Claude Opus 4.8",
       "aliases": [
         "opus-latest",
         "opus",
@@ -1159,7 +1189,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -1184,7 +1214,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -1209,7 +1239,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -1234,7 +1264,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -1259,7 +1289,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -1284,7 +1314,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -1309,7 +1339,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -1334,7 +1364,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -1359,7 +1389,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -1384,7 +1414,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -1409,7 +1439,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -1434,7 +1464,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -1459,7 +1489,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -1484,7 +1514,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -1509,7 +1539,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -1534,7 +1564,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -1559,7 +1589,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -1584,7 +1614,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -1609,7 +1639,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -1634,7 +1664,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -1659,7 +1689,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -1684,7 +1714,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -1709,7 +1739,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -1734,7 +1764,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -1759,7 +1789,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -1784,7 +1814,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -1809,7 +1839,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -1834,7 +1864,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -1859,7 +1889,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -1884,7 +1914,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -1909,7 +1939,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -1934,7 +1964,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -1959,7 +1989,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -1984,7 +2014,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -2009,7 +2039,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.8",
+          "displayName": "Claude Opus 4.8",
           "isDefault": true
         },
         {
@@ -2035,7 +2065,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -2060,7 +2090,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -2085,7 +2115,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -2110,7 +2140,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         },
         {
           "params": [
@@ -2135,7 +2165,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.8"
+          "displayName": "Claude Opus 4.8"
         }
       ]
     },
@@ -2839,7 +2869,7 @@
     },
     {
       "id": "claude-fable-5",
-      "displayName": "Fable 5",
+      "displayName": "Claude Fable 5",
       "aliases": [
         "fable",
         "fable-5",
@@ -2915,7 +2945,7 @@
               "value": "low"
             }
           ],
-          "displayName": "Fable 5"
+          "displayName": "Claude Fable 5"
         },
         {
           "params": [
@@ -2932,7 +2962,7 @@
               "value": "medium"
             }
           ],
-          "displayName": "Fable 5"
+          "displayName": "Claude Fable 5"
         },
         {
           "params": [
@@ -2949,7 +2979,7 @@
               "value": "high"
             }
           ],
-          "displayName": "Fable 5"
+          "displayName": "Claude Fable 5"
         },
         {
           "params": [
@@ -2966,7 +2996,7 @@
               "value": "xhigh"
             }
           ],
-          "displayName": "Fable 5"
+          "displayName": "Claude Fable 5"
         },
         {
           "params": [
@@ -2983,7 +3013,7 @@
               "value": "max"
             }
           ],
-          "displayName": "Fable 5"
+          "displayName": "Claude Fable 5"
         },
         {
           "params": [
@@ -3000,7 +3030,7 @@
               "value": "low"
             }
           ],
-          "displayName": "Fable 5"
+          "displayName": "Claude Fable 5"
         },
         {
           "params": [
@@ -3017,7 +3047,7 @@
               "value": "medium"
             }
           ],
-          "displayName": "Fable 5"
+          "displayName": "Claude Fable 5"
         },
         {
           "params": [
@@ -3034,7 +3064,7 @@
               "value": "high"
             }
           ],
-          "displayName": "Fable 5"
+          "displayName": "Claude Fable 5"
         },
         {
           "params": [
@@ -3051,7 +3081,7 @@
               "value": "xhigh"
             }
           ],
-          "displayName": "Fable 5"
+          "displayName": "Claude Fable 5"
         },
         {
           "params": [
@@ -3068,7 +3098,7 @@
               "value": "max"
             }
           ],
-          "displayName": "Fable 5"
+          "displayName": "Claude Fable 5"
         },
         {
           "params": [
@@ -3085,7 +3115,7 @@
               "value": "low"
             }
           ],
-          "displayName": "Fable 5"
+          "displayName": "Claude Fable 5"
         },
         {
           "params": [
@@ -3102,7 +3132,7 @@
               "value": "medium"
             }
           ],
-          "displayName": "Fable 5"
+          "displayName": "Claude Fable 5"
         },
         {
           "params": [
@@ -3119,7 +3149,7 @@
               "value": "high"
             }
           ],
-          "displayName": "Fable 5"
+          "displayName": "Claude Fable 5"
         },
         {
           "params": [
@@ -3136,7 +3166,7 @@
               "value": "xhigh"
             }
           ],
-          "displayName": "Fable 5"
+          "displayName": "Claude Fable 5"
         },
         {
           "params": [
@@ -3153,7 +3183,7 @@
               "value": "max"
             }
           ],
-          "displayName": "Fable 5"
+          "displayName": "Claude Fable 5"
         },
         {
           "params": [
@@ -3170,7 +3200,7 @@
               "value": "low"
             }
           ],
-          "displayName": "Fable 5"
+          "displayName": "Claude Fable 5"
         },
         {
           "params": [
@@ -3187,7 +3217,7 @@
               "value": "medium"
             }
           ],
-          "displayName": "Fable 5"
+          "displayName": "Claude Fable 5"
         },
         {
           "params": [
@@ -3204,7 +3234,7 @@
               "value": "high"
             }
           ],
-          "displayName": "Fable 5",
+          "displayName": "Claude Fable 5",
           "isDefault": true
         },
         {
@@ -3222,7 +3252,7 @@
               "value": "xhigh"
             }
           ],
-          "displayName": "Fable 5"
+          "displayName": "Claude Fable 5"
         },
         {
           "params": [
@@ -3239,44 +3269,14 @@
               "value": "max"
             }
           ],
-          "displayName": "Fable 5"
+          "displayName": "Claude Fable 5"
         }
       ]
     },
     {
-      "id": "claude-sonnet-5",
-      "displayName": "Sonnet 5",
-      "aliases": [
-        "sonnet-latest",
-        "sonnet-5"
-      ],
+      "id": "grok-4.5",
+      "displayName": "Cursor Grok 4.5",
       "parameters": [
-        {
-          "id": "thinking",
-          "displayName": "Thinking",
-          "values": [
-            {
-              "value": "false"
-            },
-            {
-              "value": "true"
-            }
-          ]
-        },
-        {
-          "id": "context",
-          "displayName": "Context",
-          "values": [
-            {
-              "value": "300k",
-              "displayName": "300K"
-            },
-            {
-              "value": "1m",
-              "displayName": "1M"
-            }
-          ]
-        },
         {
           "id": "effort",
           "displayName": "Effort",
@@ -3292,14 +3292,19 @@
             {
               "value": "high",
               "displayName": "High"
+            }
+          ]
+        },
+        {
+          "id": "fast",
+          "displayName": "Fast",
+          "values": [
+            {
+              "value": "false"
             },
             {
-              "value": "xhigh",
-              "displayName": "Extra High"
-            },
-            {
-              "value": "max",
-              "displayName": "Max"
+              "value": "true",
+              "displayName": "Fast​"
             }
           ]
         }
@@ -3308,343 +3313,139 @@
         {
           "params": [
             {
-              "id": "thinking",
-              "value": "false"
+              "id": "effort",
+              "value": "low"
             },
             {
-              "id": "context",
-              "value": "300k"
-            },
+              "id": "fast",
+              "value": "false"
+            }
+          ],
+          "displayName": "Cursor Grok 4.5"
+        },
+        {
+          "params": [
             {
               "id": "effort",
               "value": "low"
+            },
+            {
+              "id": "fast",
+              "value": "true"
             }
           ],
-          "displayName": "Sonnet 5"
+          "displayName": "Cursor Grok 4.5"
         },
         {
           "params": [
-            {
-              "id": "thinking",
-              "value": "false"
-            },
-            {
-              "id": "context",
-              "value": "300k"
-            },
             {
               "id": "effort",
               "value": "medium"
+            },
+            {
+              "id": "fast",
+              "value": "false"
             }
           ],
-          "displayName": "Sonnet 5"
+          "displayName": "Cursor Grok 4.5"
         },
         {
           "params": [
-            {
-              "id": "thinking",
-              "value": "false"
-            },
-            {
-              "id": "context",
-              "value": "300k"
-            },
-            {
-              "id": "effort",
-              "value": "high"
-            }
-          ],
-          "displayName": "Sonnet 5"
-        },
-        {
-          "params": [
-            {
-              "id": "thinking",
-              "value": "false"
-            },
-            {
-              "id": "context",
-              "value": "300k"
-            },
-            {
-              "id": "effort",
-              "value": "xhigh"
-            }
-          ],
-          "displayName": "Sonnet 5"
-        },
-        {
-          "params": [
-            {
-              "id": "thinking",
-              "value": "false"
-            },
-            {
-              "id": "context",
-              "value": "300k"
-            },
-            {
-              "id": "effort",
-              "value": "max"
-            }
-          ],
-          "displayName": "Sonnet 5"
-        },
-        {
-          "params": [
-            {
-              "id": "thinking",
-              "value": "false"
-            },
-            {
-              "id": "context",
-              "value": "1m"
-            },
-            {
-              "id": "effort",
-              "value": "low"
-            }
-          ],
-          "displayName": "Sonnet 5"
-        },
-        {
-          "params": [
-            {
-              "id": "thinking",
-              "value": "false"
-            },
-            {
-              "id": "context",
-              "value": "1m"
-            },
             {
               "id": "effort",
               "value": "medium"
+            },
+            {
+              "id": "fast",
+              "value": "true"
             }
           ],
-          "displayName": "Sonnet 5"
+          "displayName": "Cursor Grok 4.5"
         },
         {
           "params": [
-            {
-              "id": "thinking",
-              "value": "false"
-            },
-            {
-              "id": "context",
-              "value": "1m"
-            },
             {
               "id": "effort",
               "value": "high"
-            }
-          ],
-          "displayName": "Sonnet 5"
-        },
-        {
-          "params": [
+            },
             {
-              "id": "thinking",
+              "id": "fast",
               "value": "false"
-            },
-            {
-              "id": "context",
-              "value": "1m"
-            },
-            {
-              "id": "effort",
-              "value": "xhigh"
             }
           ],
-          "displayName": "Sonnet 5"
+          "displayName": "Cursor Grok 4.5"
         },
         {
           "params": [
-            {
-              "id": "thinking",
-              "value": "false"
-            },
-            {
-              "id": "context",
-              "value": "1m"
-            },
-            {
-              "id": "effort",
-              "value": "max"
-            }
-          ],
-          "displayName": "Sonnet 5"
-        },
-        {
-          "params": [
-            {
-              "id": "thinking",
-              "value": "true"
-            },
-            {
-              "id": "context",
-              "value": "300k"
-            },
-            {
-              "id": "effort",
-              "value": "low"
-            }
-          ],
-          "displayName": "Sonnet 5"
-        },
-        {
-          "params": [
-            {
-              "id": "thinking",
-              "value": "true"
-            },
-            {
-              "id": "context",
-              "value": "300k"
-            },
-            {
-              "id": "effort",
-              "value": "medium"
-            }
-          ],
-          "displayName": "Sonnet 5"
-        },
-        {
-          "params": [
-            {
-              "id": "thinking",
-              "value": "true"
-            },
-            {
-              "id": "context",
-              "value": "300k"
-            },
             {
               "id": "effort",
               "value": "high"
-            }
-          ],
-          "displayName": "Sonnet 5"
-        },
-        {
-          "params": [
+            },
             {
-              "id": "thinking",
+              "id": "fast",
               "value": "true"
-            },
-            {
-              "id": "context",
-              "value": "300k"
-            },
-            {
-              "id": "effort",
-              "value": "xhigh"
             }
           ],
-          "displayName": "Sonnet 5"
-        },
-        {
-          "params": [
-            {
-              "id": "thinking",
-              "value": "true"
-            },
-            {
-              "id": "context",
-              "value": "300k"
-            },
-            {
-              "id": "effort",
-              "value": "max"
-            }
-          ],
-          "displayName": "Sonnet 5"
-        },
-        {
-          "params": [
-            {
-              "id": "thinking",
-              "value": "true"
-            },
-            {
-              "id": "context",
-              "value": "1m"
-            },
-            {
-              "id": "effort",
-              "value": "low"
-            }
-          ],
-          "displayName": "Sonnet 5"
-        },
-        {
-          "params": [
-            {
-              "id": "thinking",
-              "value": "true"
-            },
-            {
-              "id": "context",
-              "value": "1m"
-            },
-            {
-              "id": "effort",
-              "value": "medium"
-            }
-          ],
-          "displayName": "Sonnet 5"
-        },
-        {
-          "params": [
-            {
-              "id": "thinking",
-              "value": "true"
-            },
-            {
-              "id": "context",
-              "value": "1m"
-            },
-            {
-              "id": "effort",
-              "value": "high"
-            }
-          ],
-          "displayName": "Sonnet 5",
+          "displayName": "Cursor Grok 4.5",
           "isDefault": true
+        }
+      ]
+    },
+    {
+      "id": "gemini-3.7-flash",
+      "displayName": "Gemini 3.7 Flash",
+      "aliases": [
+        "gemini-flash-latest",
+        "gemini-flash"
+      ],
+      "parameters": [
+        {
+          "id": "effort",
+          "displayName": "Effort",
+          "values": [
+            {
+              "value": "low",
+              "displayName": "Low"
+            },
+            {
+              "value": "medium",
+              "displayName": "Medium"
+            },
+            {
+              "value": "high",
+              "displayName": "High"
+            }
+          ]
+        }
+      ],
+      "variants": [
+        {
+          "params": [
+            {
+              "id": "effort",
+              "value": "low"
+            }
+          ],
+          "displayName": "Gemini 3.7 Flash"
         },
         {
           "params": [
             {
-              "id": "thinking",
-              "value": "true"
-            },
-            {
-              "id": "context",
-              "value": "1m"
-            },
-            {
               "id": "effort",
-              "value": "xhigh"
+              "value": "medium"
             }
           ],
-          "displayName": "Sonnet 5"
+          "displayName": "Gemini 3.7 Flash"
         },
         {
           "params": [
             {
-              "id": "thinking",
-              "value": "true"
-            },
-            {
-              "id": "context",
-              "value": "1m"
-            },
-            {
               "id": "effort",
-              "value": "max"
+              "value": "high"
             }
           ],
-          "displayName": "Sonnet 5"
+          "displayName": "Gemini 3.7 Flash",
+          "isDefault": true
         }
       ]
     },
@@ -4024,8 +3825,413 @@
       ]
     },
     {
+      "id": "claude-sonnet-5",
+      "displayName": "Claude Sonnet 5",
+      "aliases": [
+        "sonnet-latest",
+        "sonnet-5"
+      ],
+      "parameters": [
+        {
+          "id": "thinking",
+          "displayName": "Thinking",
+          "values": [
+            {
+              "value": "false"
+            },
+            {
+              "value": "true"
+            }
+          ]
+        },
+        {
+          "id": "context",
+          "displayName": "Context",
+          "values": [
+            {
+              "value": "300k",
+              "displayName": "300K"
+            },
+            {
+              "value": "1m",
+              "displayName": "1M"
+            }
+          ]
+        },
+        {
+          "id": "effort",
+          "displayName": "Effort",
+          "values": [
+            {
+              "value": "low",
+              "displayName": "Low"
+            },
+            {
+              "value": "medium",
+              "displayName": "Medium"
+            },
+            {
+              "value": "high",
+              "displayName": "High"
+            },
+            {
+              "value": "xhigh",
+              "displayName": "Extra High"
+            },
+            {
+              "value": "max",
+              "displayName": "Max"
+            }
+          ]
+        }
+      ],
+      "variants": [
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "false"
+            },
+            {
+              "id": "context",
+              "value": "300k"
+            },
+            {
+              "id": "effort",
+              "value": "low"
+            }
+          ],
+          "displayName": "Claude Sonnet 5"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "false"
+            },
+            {
+              "id": "context",
+              "value": "300k"
+            },
+            {
+              "id": "effort",
+              "value": "medium"
+            }
+          ],
+          "displayName": "Claude Sonnet 5"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "false"
+            },
+            {
+              "id": "context",
+              "value": "300k"
+            },
+            {
+              "id": "effort",
+              "value": "high"
+            }
+          ],
+          "displayName": "Claude Sonnet 5"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "false"
+            },
+            {
+              "id": "context",
+              "value": "300k"
+            },
+            {
+              "id": "effort",
+              "value": "xhigh"
+            }
+          ],
+          "displayName": "Claude Sonnet 5"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "false"
+            },
+            {
+              "id": "context",
+              "value": "300k"
+            },
+            {
+              "id": "effort",
+              "value": "max"
+            }
+          ],
+          "displayName": "Claude Sonnet 5"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "false"
+            },
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "effort",
+              "value": "low"
+            }
+          ],
+          "displayName": "Claude Sonnet 5"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "false"
+            },
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "effort",
+              "value": "medium"
+            }
+          ],
+          "displayName": "Claude Sonnet 5"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "false"
+            },
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "effort",
+              "value": "high"
+            }
+          ],
+          "displayName": "Claude Sonnet 5"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "false"
+            },
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "effort",
+              "value": "xhigh"
+            }
+          ],
+          "displayName": "Claude Sonnet 5"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "false"
+            },
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "effort",
+              "value": "max"
+            }
+          ],
+          "displayName": "Claude Sonnet 5"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "true"
+            },
+            {
+              "id": "context",
+              "value": "300k"
+            },
+            {
+              "id": "effort",
+              "value": "low"
+            }
+          ],
+          "displayName": "Claude Sonnet 5"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "true"
+            },
+            {
+              "id": "context",
+              "value": "300k"
+            },
+            {
+              "id": "effort",
+              "value": "medium"
+            }
+          ],
+          "displayName": "Claude Sonnet 5"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "true"
+            },
+            {
+              "id": "context",
+              "value": "300k"
+            },
+            {
+              "id": "effort",
+              "value": "high"
+            }
+          ],
+          "displayName": "Claude Sonnet 5"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "true"
+            },
+            {
+              "id": "context",
+              "value": "300k"
+            },
+            {
+              "id": "effort",
+              "value": "xhigh"
+            }
+          ],
+          "displayName": "Claude Sonnet 5"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "true"
+            },
+            {
+              "id": "context",
+              "value": "300k"
+            },
+            {
+              "id": "effort",
+              "value": "max"
+            }
+          ],
+          "displayName": "Claude Sonnet 5"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "true"
+            },
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "effort",
+              "value": "low"
+            }
+          ],
+          "displayName": "Claude Sonnet 5"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "true"
+            },
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "effort",
+              "value": "medium"
+            }
+          ],
+          "displayName": "Claude Sonnet 5"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "true"
+            },
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "effort",
+              "value": "high"
+            }
+          ],
+          "displayName": "Claude Sonnet 5",
+          "isDefault": true
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "true"
+            },
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "effort",
+              "value": "xhigh"
+            }
+          ],
+          "displayName": "Claude Sonnet 5"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "true"
+            },
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "effort",
+              "value": "max"
+            }
+          ],
+          "displayName": "Claude Sonnet 5"
+        }
+      ]
+    },
+    {
       "id": "claude-sonnet-4-6",
-      "displayName": "Sonnet 4.6",
+      "displayName": "Claude Sonnet 4.6",
       "aliases": [
         "sonnet-latest",
         "sonnet",
@@ -4098,7 +4304,7 @@
               "value": "low"
             }
           ],
-          "displayName": "Sonnet 4.6"
+          "displayName": "Claude Sonnet 4.6"
         },
         {
           "params": [
@@ -4115,7 +4321,7 @@
               "value": "medium"
             }
           ],
-          "displayName": "Sonnet 4.6"
+          "displayName": "Claude Sonnet 4.6"
         },
         {
           "params": [
@@ -4132,7 +4338,7 @@
               "value": "high"
             }
           ],
-          "displayName": "Sonnet 4.6"
+          "displayName": "Claude Sonnet 4.6"
         },
         {
           "params": [
@@ -4149,7 +4355,7 @@
               "value": "max"
             }
           ],
-          "displayName": "Sonnet 4.6"
+          "displayName": "Claude Sonnet 4.6"
         },
         {
           "params": [
@@ -4166,7 +4372,7 @@
               "value": "low"
             }
           ],
-          "displayName": "Sonnet 4.6"
+          "displayName": "Claude Sonnet 4.6"
         },
         {
           "params": [
@@ -4183,7 +4389,7 @@
               "value": "medium"
             }
           ],
-          "displayName": "Sonnet 4.6"
+          "displayName": "Claude Sonnet 4.6"
         },
         {
           "params": [
@@ -4200,7 +4406,7 @@
               "value": "high"
             }
           ],
-          "displayName": "Sonnet 4.6"
+          "displayName": "Claude Sonnet 4.6"
         },
         {
           "params": [
@@ -4217,7 +4423,7 @@
               "value": "max"
             }
           ],
-          "displayName": "Sonnet 4.6"
+          "displayName": "Claude Sonnet 4.6"
         },
         {
           "params": [
@@ -4234,7 +4440,7 @@
               "value": "low"
             }
           ],
-          "displayName": "Sonnet 4.6"
+          "displayName": "Claude Sonnet 4.6"
         },
         {
           "params": [
@@ -4251,7 +4457,7 @@
               "value": "medium"
             }
           ],
-          "displayName": "Sonnet 4.6"
+          "displayName": "Claude Sonnet 4.6"
         },
         {
           "params": [
@@ -4268,7 +4474,7 @@
               "value": "high"
             }
           ],
-          "displayName": "Sonnet 4.6"
+          "displayName": "Claude Sonnet 4.6"
         },
         {
           "params": [
@@ -4285,7 +4491,7 @@
               "value": "max"
             }
           ],
-          "displayName": "Sonnet 4.6"
+          "displayName": "Claude Sonnet 4.6"
         },
         {
           "params": [
@@ -4302,7 +4508,7 @@
               "value": "low"
             }
           ],
-          "displayName": "Sonnet 4.6"
+          "displayName": "Claude Sonnet 4.6"
         },
         {
           "params": [
@@ -4319,7 +4525,7 @@
               "value": "medium"
             }
           ],
-          "displayName": "Sonnet 4.6",
+          "displayName": "Claude Sonnet 4.6",
           "isDefault": true
         },
         {
@@ -4337,7 +4543,7 @@
               "value": "high"
             }
           ],
-          "displayName": "Sonnet 4.6"
+          "displayName": "Claude Sonnet 4.6"
         },
         {
           "params": [
@@ -4354,7 +4560,7 @@
               "value": "max"
             }
           ],
-          "displayName": "Sonnet 4.6"
+          "displayName": "Claude Sonnet 4.6"
         }
       ]
     },
@@ -4553,7 +4759,7 @@
     },
     {
       "id": "claude-opus-4-7",
-      "displayName": "Opus 4.7",
+      "displayName": "Claude Opus 4.7",
       "aliases": [
         "opus-4.7",
         "opus-4-7"
@@ -4649,7 +4855,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -4674,7 +4880,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -4699,7 +4905,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -4724,7 +4930,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -4749,7 +4955,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -4774,7 +4980,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -4799,7 +5005,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -4824,7 +5030,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -4849,7 +5055,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -4874,7 +5080,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -4899,7 +5105,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -4924,7 +5130,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -4949,7 +5155,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -4974,7 +5180,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -4999,7 +5205,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -5024,7 +5230,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -5049,7 +5255,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -5074,7 +5280,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -5099,7 +5305,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -5124,7 +5330,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -5149,7 +5355,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -5174,7 +5380,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -5199,7 +5405,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -5224,7 +5430,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -5249,7 +5455,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -5274,7 +5480,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -5299,7 +5505,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -5324,7 +5530,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -5349,7 +5555,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -5374,7 +5580,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -5399,7 +5605,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -5424,7 +5630,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -5449,7 +5655,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -5474,7 +5680,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -5499,7 +5705,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -5524,7 +5730,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -5549,7 +5755,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.7",
+          "displayName": "Claude Opus 4.7",
           "isDefault": true
         },
         {
@@ -5575,7 +5781,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -5600,7 +5806,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         },
         {
           "params": [
@@ -5625,7 +5831,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.7"
+          "displayName": "Claude Opus 4.7"
         }
       ]
     },
@@ -5951,7 +6157,7 @@
     },
     {
       "id": "claude-opus-4-6",
-      "displayName": "Opus 4.6",
+      "displayName": "Claude Opus 4.6",
       "aliases": [
         "opus",
         "opus-4.6",
@@ -6023,7 +6229,7 @@
               "value": "low"
             }
           ],
-          "displayName": "Opus 4.6"
+          "displayName": "Claude Opus 4.6"
         },
         {
           "params": [
@@ -6040,7 +6246,7 @@
               "value": "medium"
             }
           ],
-          "displayName": "Opus 4.6"
+          "displayName": "Claude Opus 4.6"
         },
         {
           "params": [
@@ -6057,7 +6263,7 @@
               "value": "high"
             }
           ],
-          "displayName": "Opus 4.6"
+          "displayName": "Claude Opus 4.6"
         },
         {
           "params": [
@@ -6074,7 +6280,7 @@
               "value": "max"
             }
           ],
-          "displayName": "Opus 4.6"
+          "displayName": "Claude Opus 4.6"
         },
         {
           "params": [
@@ -6091,7 +6297,7 @@
               "value": "low"
             }
           ],
-          "displayName": "Opus 4.6"
+          "displayName": "Claude Opus 4.6"
         },
         {
           "params": [
@@ -6108,7 +6314,7 @@
               "value": "medium"
             }
           ],
-          "displayName": "Opus 4.6"
+          "displayName": "Claude Opus 4.6"
         },
         {
           "params": [
@@ -6125,7 +6331,7 @@
               "value": "high"
             }
           ],
-          "displayName": "Opus 4.6"
+          "displayName": "Claude Opus 4.6"
         },
         {
           "params": [
@@ -6142,7 +6348,7 @@
               "value": "max"
             }
           ],
-          "displayName": "Opus 4.6"
+          "displayName": "Claude Opus 4.6"
         },
         {
           "params": [
@@ -6159,7 +6365,7 @@
               "value": "low"
             }
           ],
-          "displayName": "Opus 4.6"
+          "displayName": "Claude Opus 4.6"
         },
         {
           "params": [
@@ -6176,7 +6382,7 @@
               "value": "medium"
             }
           ],
-          "displayName": "Opus 4.6"
+          "displayName": "Claude Opus 4.6"
         },
         {
           "params": [
@@ -6193,7 +6399,7 @@
               "value": "high"
             }
           ],
-          "displayName": "Opus 4.6"
+          "displayName": "Claude Opus 4.6"
         },
         {
           "params": [
@@ -6210,7 +6416,7 @@
               "value": "max"
             }
           ],
-          "displayName": "Opus 4.6"
+          "displayName": "Claude Opus 4.6"
         },
         {
           "params": [
@@ -6227,7 +6433,7 @@
               "value": "low"
             }
           ],
-          "displayName": "Opus 4.6"
+          "displayName": "Claude Opus 4.6"
         },
         {
           "params": [
@@ -6244,7 +6450,7 @@
               "value": "medium"
             }
           ],
-          "displayName": "Opus 4.6"
+          "displayName": "Claude Opus 4.6"
         },
         {
           "params": [
@@ -6261,7 +6467,7 @@
               "value": "high"
             }
           ],
-          "displayName": "Opus 4.6",
+          "displayName": "Claude Opus 4.6",
           "isDefault": true
         },
         {
@@ -6279,13 +6485,13 @@
               "value": "max"
             }
           ],
-          "displayName": "Opus 4.6"
+          "displayName": "Claude Opus 4.6"
         }
       ]
     },
     {
       "id": "claude-opus-4-5",
-      "displayName": "Opus 4.5",
+      "displayName": "Claude Opus 4.5",
       "aliases": [
         "opus",
         "opus-4.5",
@@ -6313,7 +6519,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Opus 4.5"
+          "displayName": "Claude Opus 4.5"
         },
         {
           "params": [
@@ -6322,7 +6528,7 @@
               "value": "true"
             }
           ],
-          "displayName": "Opus 4.5",
+          "displayName": "Claude Opus 4.5",
           "isDefault": true
         }
       ]
@@ -7111,7 +7317,7 @@
     },
     {
       "id": "claude-haiku-4-5",
-      "displayName": "Haiku 4.5",
+      "displayName": "Claude Haiku 4.5",
       "aliases": [
         "haiku-latest",
         "haiku",
@@ -7140,7 +7346,7 @@
               "value": "false"
             }
           ],
-          "displayName": "Haiku 4.5"
+          "displayName": "Claude Haiku 4.5"
         },
         {
           "params": [
@@ -7149,14 +7355,14 @@
               "value": "true"
             }
           ],
-          "displayName": "Haiku 4.5",
+          "displayName": "Claude Haiku 4.5",
           "isDefault": true
         }
       ]
     },
     {
       "id": "claude-sonnet-4-5",
-      "displayName": "Sonnet 4.5",
+      "displayName": "Claude Sonnet 4.5",
       "aliases": [
         "sonnet",
         "sonnet-4.5",
@@ -7198,7 +7404,7 @@
               "value": "200k"
             }
           ],
-          "displayName": "Sonnet 4.5"
+          "displayName": "Claude Sonnet 4.5"
         },
         {
           "params": [
@@ -7211,7 +7417,7 @@
               "value": "200k"
             }
           ],
-          "displayName": "Sonnet 4.5",
+          "displayName": "Claude Sonnet 4.5",
           "isDefault": true
         }
       ]
@@ -7274,17 +7480,6 @@
       ]
     },
     {
-      "id": "gemini-3-flash",
-      "displayName": "Gemini 3 Flash",
-      "variants": [
-        {
-          "params": [],
-          "displayName": "Gemini 3 Flash",
-          "isDefault": true
-        }
-      ]
-    },
-    {
       "id": "gemini-3.5-flash",
       "displayName": "Gemini 3.5 Flash",
       "aliases": [
@@ -7301,7 +7496,7 @@
     },
     {
       "id": "claude-sonnet-4",
-      "displayName": "Sonnet 4",
+      "displayName": "Claude Sonnet 4",
       "aliases": [
         "sonnet",
         "sonnet-4"
@@ -7342,7 +7537,7 @@
               "value": "200k"
             }
           ],
-          "displayName": "Sonnet 4",
+          "displayName": "Claude Sonnet 4",
           "isDefault": true
         },
         {
@@ -7356,7 +7551,7 @@
               "value": "200k"
             }
           ],
-          "displayName": "Sonnet 4"
+          "displayName": "Claude Sonnet 4"
         }
       ]
     },
@@ -7495,6 +7690,17 @@
             }
           ],
           "displayName": "GLM 5.2"
+        }
+      ]
+    },
+    {
+      "id": "gemini-3-flash",
+      "displayName": "Gemini 3 Flash",
+      "variants": [
+        {
+          "params": [],
+          "displayName": "Gemini 3 Flash",
+          "isDefault": true
         }
       ]
     }

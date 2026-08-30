@@ -1,17 +1,25 @@
 {
-  "lastChangelogVersion": "0.84.1",
-  "defaultProvider": "codebuff",
-  "defaultModel": "deepseek/deepseek-v4-flash-0731",
+  "lastChangelogVersion": "0.84.4",
+  "defaultProvider": "openrouter",
+  "defaultModel": "stealth/ox-alpha",
   "defaultThinkingLevel": "xhigh",
   "packages": [
     "extensions/read-directories.ts",
     "extensions/read-image-fallback.ts",
-    "extensions/disable-grep.ts",
+    "extensions/disable-search-tools.ts",
     "extensions/codebuff-provider.ts",
     "extensions/freebuff-provider.ts",
     "~/projects/pi-subagents/index.ts",
-    "npm:pi-cursor-sdk"
+    "npm:pi-cursor-sdk",
+    "npm:pi-fff"
   ],
+  "subagents": {
+    "models": {
+      "explore": "openrouter/z-ai/glm-5.3-flash:high",
+      "general-purpose": "openrouter/z-ai/glm-5.3-flash:medium",
+      "web-search": "openai-codex/gpt-5.6-luna:xhigh"
+    }
+  },
   "hideThinkingBlock": true,
   "theme": "dark",
   "retry": {

@@ -31,3 +31,6 @@ node_modules/
 
 # Voice-input / session runtime locks
 agent/session-locks/
+
+# runtime data
+agent/pi-fff/

@@ -26,7 +26,9 @@ const AUTH_FILE = join(homedir(), ".pi", "agent", "auth.json");
 const PROVIDER_ORDER: Record<string, string[]> = {
 	"anthropic/claude-sonnet-4.6": ["Google", "Anthropic", "Amazon Bedrock"],
 	"anthropic/claude-opus-4.7": ["Google", "Anthropic"],
-	"z-ai/glm-5.2": ["baseten/fast"],
+	"anthropic/claude-opus-5": ["Google", "Anthropic"],
+	"z-ai/glm-5.2": ["decart/fp4"],
+	"moonshotai/kimi-k3": ["modal/mxfp4"],
 	"deepseek/deepseek-v4-flash-0731": ["Novita"],
 };
 
