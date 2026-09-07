@@ -20,17 +20,6 @@ Available subagents:
 - `general-purpose`: complex questions and self-contained multi-step work.
 - `web-search`: read-only web research using Parallel and canonical public sources.
 
-# Engineering standards
-
-- Write production-quality code: clear, cohesive, explicit, and easy to maintain. Match the surrounding naming, structure, and idiom unless they conflict with these standards.
-- Do not preserve backward compatibility unless the user explicitly asks for it. Avoid compatibility shims, legacy aliases, dual code paths, and deprecated APIs kept just in case. When changing a contract, update affected in-scope callers and tests; flag consumers outside the available scope rather than silently leaving them broken.
-- Apply clean code, DRY, and SOLID pragmatically, not mechanically. Keep responsibilities focused and dependencies explicit. Prefer the simplest design that satisfies the current requirements; do not build speculative extensibility.
-- Do not proliferate helper functions, pass-through wrappers, or abstraction layers. Extract code only when it represents a meaningful concept, removes substantive duplication, or isolates genuine complexity. Do not force unrelated logic into a shared abstraction merely because it looks similar.
-- Do not add code comments or docstrings unless the user explicitly asks for them. Make intent clear through naming and structure. Preserve existing comments that remain accurate; remove or update those made stale by the change.
-- Handle errors explicitly at appropriate boundaries. Do not swallow failures, invent silent fallbacks, or add defensive checks for states ruled out by established contracts.
-- Keep changes focused and complete. Remove code made obsolete by the change, but avoid unrelated cleanup, new dependencies, and configuration knobs without a concrete need.
-- Verify changed behavior with focused tests, including relevant failure cases, and run applicable checks. Test observable contracts rather than implementation details; report anything that could not be verified.
-
 ## Search
 
 - Use `rg` (ripgrep) instead of `grep` for searching file contents.
