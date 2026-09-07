@@ -1,5 +1,5 @@
 {
-  "lastChangelogVersion": "0.84.4",
+  "lastChangelogVersion": "0.85.1",
   "defaultProvider": "openrouter",
   "defaultModel": "stealth/ox-alpha",
   "defaultThinkingLevel": "xhigh",
@@ -9,6 +9,7 @@
     "extensions/disable-search-tools.ts",
     "extensions/codebuff-provider.ts",
     "extensions/freebuff-provider.ts",
+    "extensions/pi-codex-compact/index.ts",
     "~/projects/pi-subagents/index.ts",
     "npm:pi-cursor-sdk",
     "npm:pi-fff"
@@ -17,7 +18,7 @@
     "models": {
       "explore": "openrouter/z-ai/glm-5.3-flash:high",
       "general-purpose": "openrouter/z-ai/glm-5.3-flash:medium",
-      "web-search": "openai-codex/gpt-5.6-luna:xhigh"
+      "web-search": "opencode/muse-spark-1.3-contributor-free:high"
     }
   },
   "hideThinkingBlock": true,

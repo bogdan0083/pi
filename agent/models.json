@@ -1,5 +1,40 @@
 {
   "providers": {
+    "inception": {
+      "baseUrl": "https://api.inceptionlabs.ai/v1",
+      "api": "openai-completions",
+      "apiKey": "$MERCURY_API_KEY",
+      "compat": {
+        "supportsStore": false,
+        "supportsDeveloperRole": false,
+        "maxTokensField": "max_tokens"
+      },
+      "models": [
+        {
+          "id": "mercury-2.5",
+          "name": "Mercury 2.5",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 260000,
+          "maxTokens": 8192,
+          "cost": {
+            "input": 0.3,
+            "output": 1.2,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "thinkingLevelMap": {
+            "off": null,
+            "minimal": "instant",
+            "low": "instant",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": "high",
+            "max": "high"
+          }
+        }
+      ]
+    },
     "deepseek": {
       "models": [
         {

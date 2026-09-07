@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "fetchedAt": 1787992960232,
+  "fetchedAt": 1788686903645,
   "keyFingerprint": "a1fa565ba7502341",
   "models": [
     {
@@ -2467,11 +2467,45 @@
             },
             {
               "id": "reasoning",
+              "value": "none"
+            },
+            {
+              "id": "fast",
+              "value": "true"
+            }
+          ],
+          "displayName": "GPT-5.6 Sol"
+        },
+        {
+          "params": [
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "reasoning",
               "value": "low"
             },
             {
               "id": "fast",
               "value": "false"
+            }
+          ],
+          "displayName": "GPT-5.6 Sol"
+        },
+        {
+          "params": [
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "reasoning",
+              "value": "low"
+            },
+            {
+              "id": "fast",
+              "value": "true"
             }
           ],
           "displayName": "GPT-5.6 Sol"
@@ -2502,11 +2536,45 @@
             },
             {
               "id": "reasoning",
+              "value": "medium"
+            },
+            {
+              "id": "fast",
+              "value": "true"
+            }
+          ],
+          "displayName": "GPT-5.6 Sol"
+        },
+        {
+          "params": [
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "reasoning",
               "value": "high"
             },
             {
               "id": "fast",
               "value": "false"
+            }
+          ],
+          "displayName": "GPT-5.6 Sol"
+        },
+        {
+          "params": [
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "reasoning",
+              "value": "high"
+            },
+            {
+              "id": "fast",
+              "value": "true"
             }
           ],
           "displayName": "GPT-5.6 Sol"
@@ -2536,11 +2604,45 @@
             },
             {
               "id": "reasoning",
+              "value": "xhigh"
+            },
+            {
+              "id": "fast",
+              "value": "true"
+            }
+          ],
+          "displayName": "GPT-5.6 Sol"
+        },
+        {
+          "params": [
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "reasoning",
               "value": "max"
             },
             {
               "id": "fast",
               "value": "false"
+            }
+          ],
+          "displayName": "GPT-5.6 Sol"
+        },
+        {
+          "params": [
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "reasoning",
+              "value": "max"
+            },
+            {
+              "id": "fast",
+              "value": "true"
             }
           ],
           "displayName": "GPT-5.6 Sol"
@@ -2864,6 +2966,410 @@
             }
           ],
           "displayName": "GPT-5.5"
+        }
+      ]
+    },
+    {
+      "id": "claude-fable-5-1",
+      "displayName": "Claude Fable 5.1",
+      "aliases": [
+        "fable-5-1"
+      ],
+      "parameters": [
+        {
+          "id": "thinking",
+          "displayName": "Thinking",
+          "values": [
+            {
+              "value": "false"
+            },
+            {
+              "value": "true"
+            }
+          ]
+        },
+        {
+          "id": "context",
+          "displayName": "Context",
+          "values": [
+            {
+              "value": "300k",
+              "displayName": "300K"
+            },
+            {
+              "value": "1m",
+              "displayName": "1M"
+            }
+          ]
+        },
+        {
+          "id": "effort",
+          "displayName": "Effort",
+          "values": [
+            {
+              "value": "low",
+              "displayName": "Low"
+            },
+            {
+              "value": "medium",
+              "displayName": "Medium"
+            },
+            {
+              "value": "high",
+              "displayName": "High"
+            },
+            {
+              "value": "xhigh",
+              "displayName": "Extra High"
+            },
+            {
+              "value": "max",
+              "displayName": "Max"
+            }
+          ]
+        }
+      ],
+      "variants": [
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "false"
+            },
+            {
+              "id": "context",
+              "value": "300k"
+            },
+            {
+              "id": "effort",
+              "value": "low"
+            }
+          ],
+          "displayName": "Claude Fable 5.1"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "false"
+            },
+            {
+              "id": "context",
+              "value": "300k"
+            },
+            {
+              "id": "effort",
+              "value": "medium"
+            }
+          ],
+          "displayName": "Claude Fable 5.1"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "false"
+            },
+            {
+              "id": "context",
+              "value": "300k"
+            },
+            {
+              "id": "effort",
+              "value": "high"
+            }
+          ],
+          "displayName": "Claude Fable 5.1"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "false"
+            },
+            {
+              "id": "context",
+              "value": "300k"
+            },
+            {
+              "id": "effort",
+              "value": "xhigh"
+            }
+          ],
+          "displayName": "Claude Fable 5.1"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "false"
+            },
+            {
+              "id": "context",
+              "value": "300k"
+            },
+            {
+              "id": "effort",
+              "value": "max"
+            }
+          ],
+          "displayName": "Claude Fable 5.1"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "false"
+            },
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "effort",
+              "value": "low"
+            }
+          ],
+          "displayName": "Claude Fable 5.1"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "false"
+            },
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "effort",
+              "value": "medium"
+            }
+          ],
+          "displayName": "Claude Fable 5.1"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "false"
+            },
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "effort",
+              "value": "high"
+            }
+          ],
+          "displayName": "Claude Fable 5.1"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "false"
+            },
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "effort",
+              "value": "xhigh"
+            }
+          ],
+          "displayName": "Claude Fable 5.1"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "false"
+            },
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "effort",
+              "value": "max"
+            }
+          ],
+          "displayName": "Claude Fable 5.1"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "true"
+            },
+            {
+              "id": "context",
+              "value": "300k"
+            },
+            {
+              "id": "effort",
+              "value": "low"
+            }
+          ],
+          "displayName": "Claude Fable 5.1"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "true"
+            },
+            {
+              "id": "context",
+              "value": "300k"
+            },
+            {
+              "id": "effort",
+              "value": "medium"
+            }
+          ],
+          "displayName": "Claude Fable 5.1"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "true"
+            },
+            {
+              "id": "context",
+              "value": "300k"
+            },
+            {
+              "id": "effort",
+              "value": "high"
+            }
+          ],
+          "displayName": "Claude Fable 5.1"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "true"
+            },
+            {
+              "id": "context",
+              "value": "300k"
+            },
+            {
+              "id": "effort",
+              "value": "xhigh"
+            }
+          ],
+          "displayName": "Claude Fable 5.1"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "true"
+            },
+            {
+              "id": "context",
+              "value": "300k"
+            },
+            {
+              "id": "effort",
+              "value": "max"
+            }
+          ],
+          "displayName": "Claude Fable 5.1"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "true"
+            },
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "effort",
+              "value": "low"
+            }
+          ],
+          "displayName": "Claude Fable 5.1"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "true"
+            },
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "effort",
+              "value": "medium"
+            }
+          ],
+          "displayName": "Claude Fable 5.1"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "true"
+            },
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "effort",
+              "value": "high"
+            }
+          ],
+          "displayName": "Claude Fable 5.1",
+          "isDefault": true
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "true"
+            },
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "effort",
+              "value": "xhigh"
+            }
+          ],
+          "displayName": "Claude Fable 5.1"
+        },
+        {
+          "params": [
+            {
+              "id": "thinking",
+              "value": "true"
+            },
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "effort",
+              "value": "max"
+            }
+          ],
+          "displayName": "Claude Fable 5.1"
         }
       ]
     },
@@ -3274,11 +3780,11 @@
       ]
     },
     {
-      "id": "grok-4.5",
-      "displayName": "Cursor Grok 4.5",
+      "id": "gemini-3.8-flash",
+      "displayName": "Gemini 3.8 Flash",
       "parameters": [
         {
-          "id": "effort",
+          "id": "reasoning_effort",
           "displayName": "Effort",
           "values": [
             {
@@ -3294,99 +3800,35 @@
               "displayName": "High"
             }
           ]
-        },
-        {
-          "id": "fast",
-          "displayName": "Fast",
-          "values": [
-            {
-              "value": "false"
-            },
-            {
-              "value": "true",
-              "displayName": "Fast​"
-            }
-          ]
         }
       ],
       "variants": [
         {
           "params": [
             {
-              "id": "effort",
+              "id": "reasoning_effort",
               "value": "low"
-            },
-            {
-              "id": "fast",
-              "value": "false"
             }
           ],
-          "displayName": "Cursor Grok 4.5"
+          "displayName": "Gemini 3.8 Flash Low"
         },
         {
           "params": [
             {
-              "id": "effort",
-              "value": "low"
-            },
-            {
-              "id": "fast",
-              "value": "true"
-            }
-          ],
-          "displayName": "Cursor Grok 4.5"
-        },
-        {
-          "params": [
-            {
-              "id": "effort",
+              "id": "reasoning_effort",
               "value": "medium"
-            },
-            {
-              "id": "fast",
-              "value": "false"
             }
           ],
-          "displayName": "Cursor Grok 4.5"
+          "displayName": "Gemini 3.8 Flash Medium"
         },
         {
           "params": [
             {
-              "id": "effort",
-              "value": "medium"
-            },
-            {
-              "id": "fast",
-              "value": "true"
-            }
-          ],
-          "displayName": "Cursor Grok 4.5"
-        },
-        {
-          "params": [
-            {
-              "id": "effort",
+              "id": "reasoning_effort",
               "value": "high"
-            },
-            {
-              "id": "fast",
-              "value": "false"
             }
           ],
-          "displayName": "Cursor Grok 4.5"
-        },
-        {
-          "params": [
-            {
-              "id": "effort",
-              "value": "high"
-            },
-            {
-              "id": "fast",
-              "value": "true"
-            }
-          ],
-          "displayName": "Cursor Grok 4.5",
+          "displayName": "Gemini 3.8 Flash High",
           "isDefault": true
         }
       ]
@@ -3744,11 +4186,45 @@
             },
             {
               "id": "reasoning",
+              "value": "none"
+            },
+            {
+              "id": "fast",
+              "value": "true"
+            }
+          ],
+          "displayName": "GPT-5.6 Terra"
+        },
+        {
+          "params": [
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "reasoning",
               "value": "low"
             },
             {
               "id": "fast",
               "value": "false"
+            }
+          ],
+          "displayName": "GPT-5.6 Terra"
+        },
+        {
+          "params": [
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "reasoning",
+              "value": "low"
+            },
+            {
+              "id": "fast",
+              "value": "true"
             }
           ],
           "displayName": "GPT-5.6 Terra"
@@ -3779,11 +4255,45 @@
             },
             {
               "id": "reasoning",
+              "value": "medium"
+            },
+            {
+              "id": "fast",
+              "value": "true"
+            }
+          ],
+          "displayName": "GPT-5.6 Terra"
+        },
+        {
+          "params": [
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "reasoning",
               "value": "high"
             },
             {
               "id": "fast",
               "value": "false"
+            }
+          ],
+          "displayName": "GPT-5.6 Terra"
+        },
+        {
+          "params": [
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "reasoning",
+              "value": "high"
+            },
+            {
+              "id": "fast",
+              "value": "true"
             }
           ],
           "displayName": "GPT-5.6 Terra"
@@ -3813,11 +4323,45 @@
             },
             {
               "id": "reasoning",
+              "value": "xhigh"
+            },
+            {
+              "id": "fast",
+              "value": "true"
+            }
+          ],
+          "displayName": "GPT-5.6 Terra"
+        },
+        {
+          "params": [
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "reasoning",
               "value": "max"
             },
             {
               "id": "fast",
               "value": "false"
+            }
+          ],
+          "displayName": "GPT-5.6 Terra"
+        },
+        {
+          "params": [
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "reasoning",
+              "value": "max"
+            },
+            {
+              "id": "fast",
+              "value": "true"
             }
           ],
           "displayName": "GPT-5.6 Terra"
@@ -6979,11 +7523,45 @@
             },
             {
               "id": "reasoning",
+              "value": "none"
+            },
+            {
+              "id": "fast",
+              "value": "true"
+            }
+          ],
+          "displayName": "GPT-5.6 Luna"
+        },
+        {
+          "params": [
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "reasoning",
               "value": "low"
             },
             {
               "id": "fast",
               "value": "false"
+            }
+          ],
+          "displayName": "GPT-5.6 Luna"
+        },
+        {
+          "params": [
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "reasoning",
+              "value": "low"
+            },
+            {
+              "id": "fast",
+              "value": "true"
             }
           ],
           "displayName": "GPT-5.6 Luna"
@@ -7014,11 +7592,45 @@
             },
             {
               "id": "reasoning",
+              "value": "medium"
+            },
+            {
+              "id": "fast",
+              "value": "true"
+            }
+          ],
+          "displayName": "GPT-5.6 Luna"
+        },
+        {
+          "params": [
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "reasoning",
               "value": "high"
             },
             {
               "id": "fast",
               "value": "false"
+            }
+          ],
+          "displayName": "GPT-5.6 Luna"
+        },
+        {
+          "params": [
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "reasoning",
+              "value": "high"
+            },
+            {
+              "id": "fast",
+              "value": "true"
             }
           ],
           "displayName": "GPT-5.6 Luna"
@@ -7048,11 +7660,45 @@
             },
             {
               "id": "reasoning",
+              "value": "xhigh"
+            },
+            {
+              "id": "fast",
+              "value": "true"
+            }
+          ],
+          "displayName": "GPT-5.6 Luna"
+        },
+        {
+          "params": [
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "reasoning",
               "value": "max"
             },
             {
               "id": "fast",
               "value": "false"
+            }
+          ],
+          "displayName": "GPT-5.6 Luna"
+        },
+        {
+          "params": [
+            {
+              "id": "context",
+              "value": "1m"
+            },
+            {
+              "id": "reasoning",
+              "value": "max"
+            },
+            {
+              "id": "fast",
+              "value": "true"
             }
           ],
           "displayName": "GPT-5.6 Luna"
@@ -7480,6 +8126,17 @@
       ]
     },
     {
+      "id": "gemini-3-flash",
+      "displayName": "Gemini 3 Flash",
+      "variants": [
+        {
+          "params": [],
+          "displayName": "Gemini 3 Flash",
+          "isDefault": true
+        }
+      ]
+    },
+    {
       "id": "gemini-3.5-flash",
       "displayName": "Gemini 3.5 Flash",
       "aliases": [
@@ -7690,17 +8347,6 @@
             }
           ],
           "displayName": "GLM 5.2"
-        }
-      ]
-    },
-    {
-      "id": "gemini-3-flash",
-      "displayName": "Gemini 3 Flash",
-      "variants": [
-        {
-          "params": [],
-          "displayName": "Gemini 3 Flash",
-          "isDefault": true
         }
       ]
     }
