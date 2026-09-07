@@ -24,6 +24,7 @@
   },
   "hideThinkingBlock": true,
   "theme": "dark",
+  "tuiMode": "fullscreen",
   "retry": {
     "enabled": true,
     "maxRetries": 10,

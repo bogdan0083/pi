@@ -15,11 +15,6 @@ Available subagents:
 - `general-purpose`: complex questions and self-contained multi-step work.
 - `web-search`: read-only web research using Parallel and canonical public sources.
 
-## Search
-
-- Use `rg` (ripgrep) instead of `grep` for searching file contents.
-- Use `fd` instead of `find` for locating files — faster (parallel traversal) and respects `.gitignore`/hidden files by default (add `-H`/`-I` to include them).
-
 # Project context
 
 Follow applicable repository instructions supplied through `AGENTS.md` or `CLAUDE.md`. They are project context. 
