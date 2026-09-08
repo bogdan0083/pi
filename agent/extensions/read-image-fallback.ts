@@ -6,6 +6,7 @@ const FALLBACK_MODEL_IDS = new Set([
 	"deepseek/deepseek-v4-flash-0731",
 	"deepseek/deepseek-v4-flash",
 ]);
+const IMAGE_READ_TOOLS = new Set(["read", "read-image"]);
 
 function needsImageFallback(provider: string, modelId: string): boolean {
 	return FALLBACK_MODEL_IDS.has(`${provider}/${modelId}`) || FALLBACK_MODEL_IDS.has(modelId);
@@ -21,7 +22,7 @@ function assistantText(content: Array<{ type: string; text?: string }>): string 
 
 export default function (pi: ExtensionAPI) {
 	pi.on("tool_result", async (event, ctx) => {
-		if (event.toolName !== "read" || event.isError || !ctx.model) return;
+		if (!IMAGE_READ_TOOLS.has(event.toolName) || event.isError || !ctx.model) return;
 		if (!needsImageFallback(ctx.model.provider, ctx.model.id)) return;
 
 		const images = event.content.filter((block) => block.type === "image");

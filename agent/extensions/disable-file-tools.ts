@@ -1,6 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
-/** Keep the built-in `read`, `edit`, and `write` tools unavailable; file operations go through `bash`. */
+/** Keep the built-in `read`, `edit`, and `write` tools unavailable; text files go through `bash`, images through `read-image`. */
 const DISABLED = new Set(["read", "edit", "write"]);
 
 export default function (pi: ExtensionAPI) {
