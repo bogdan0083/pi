@@ -1509,16 +1509,20 @@ export class AgentSession {
 	}
 
 	/**
-	 * Clear all queued messages and return them.
-	 * Useful for restoring to editor when user aborts.
-	 * @returns Object with steering and followUp arrays
+	 * Clear queued user messages and return them for restoring to the editor
+	 * when the user aborts.
+	 * Extension-injected custom messages (role "custom", e.g. background
+	 * subagent completion notifications) are preserved in the agent queues so
+	 * the post-run continuation still delivers and persists them. Dropping them
+	 * here silently lost notifications whenever the parent was interrupted.
+	 * @returns Object with steering and followUp arrays (user text only)
 	 */
 	clearQueue(): { steering: string[]; followUp: string[] } {
 		const steering = [...this._steeringMessages];
 		const followUp = [...this._followUpMessages];
 		this._steeringMessages = [];
 		this._followUpMessages = [];
-		this.agent.clearAllQueues();
+		this.agent.clearQueuedUserMessages();
 		this._emitQueueUpdate();
 		return { steering, followUp };
 	}

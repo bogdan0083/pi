@@ -151,6 +151,19 @@ class PendingMessageQueue {
 		return [first];
 	}
 
+	/** Remove and return messages matching the predicate, preserving order of the rest. */
+	removeWhere(predicate: (message: AgentMessage) => boolean): AgentMessage[] {
+		const removed: AgentMessage[] = [];
+		this.messages = this.messages.filter((message) => {
+			if (predicate(message)) {
+				removed.push(message);
+				return false;
+			}
+			return true;
+		});
+		return removed;
+	}
+
 	clear(): void {
 		this.messages = [];
 	}
@@ -296,6 +309,20 @@ export class Agent {
 	clearAllQueues(): void {
 		this.clearSteeringQueue();
 		this.clearFollowUpQueue();
+	}
+
+	/**
+	 * Remove queued user messages while preserving extension-injected messages
+	 * (role "custom", e.g. background subagent completion notifications).
+	 * Used when the user interrupts: their queued text is restored to the editor,
+	 * but extension notifications must still be delivered instead of dropped.
+	 * Returns the removed user messages per queue.
+	 */
+	clearQueuedUserMessages(): { steering: AgentMessage[]; followUp: AgentMessage[] } {
+		return {
+			steering: this.steeringQueue.removeWhere((message) => message.role === "user"),
+			followUp: this.followUpQueue.removeWhere((message) => message.role === "user"),
+		};
 	}
 
 	/** Returns true when either queue still contains pending messages. */
