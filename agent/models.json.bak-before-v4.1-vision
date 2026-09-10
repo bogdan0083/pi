@@ -14,9 +14,7 @@
           "id": "mercury-2.5",
           "name": "Mercury 2.5",
           "reasoning": true,
-          "input": [
-            "text"
-          ],
+          "input": ["text"],
           "contextWindow": 260000,
           "maxTokens": 8192,
           "cost": {
@@ -43,10 +41,7 @@
           "id": "deepseek-v4-flash-vision-exp",
           "name": "DeepSeek V4 Flash Vision Exp",
           "reasoning": true,
-          "input": [
-            "text",
-            "image"
-          ],
+          "input": ["text", "image"],
           "cost": {
             "input": 0.14,
             "output": 0.28,

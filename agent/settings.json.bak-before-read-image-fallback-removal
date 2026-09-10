@@ -6,6 +6,7 @@
   "packages": [
     "extensions/read-directories.ts",
     "extensions/read-image.ts",
+    "extensions/read-image-fallback.ts",
     "extensions/disable-search-tools.ts",
     "extensions/disable-file-tools.ts",
     "extensions/codebuff-provider.ts",

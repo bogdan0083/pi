@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "fetchedAt": 1788686903645,
+  "fetchedAt": 1788875327089,
   "keyFingerprint": "a1fa565ba7502341",
   "models": [
     {
@@ -3776,6 +3776,124 @@
             }
           ],
           "displayName": "Claude Fable 5"
+        }
+      ]
+    },
+    {
+      "id": "grok-4.5",
+      "displayName": "Cursor Grok 4.5",
+      "parameters": [
+        {
+          "id": "effort",
+          "displayName": "Effort",
+          "values": [
+            {
+              "value": "low",
+              "displayName": "Low"
+            },
+            {
+              "value": "medium",
+              "displayName": "Medium"
+            },
+            {
+              "value": "high",
+              "displayName": "High"
+            }
+          ]
+        },
+        {
+          "id": "fast",
+          "displayName": "Fast",
+          "values": [
+            {
+              "value": "false"
+            },
+            {
+              "value": "true",
+              "displayName": "Fast​"
+            }
+          ]
+        }
+      ],
+      "variants": [
+        {
+          "params": [
+            {
+              "id": "effort",
+              "value": "low"
+            },
+            {
+              "id": "fast",
+              "value": "false"
+            }
+          ],
+          "displayName": "Cursor Grok 4.5"
+        },
+        {
+          "params": [
+            {
+              "id": "effort",
+              "value": "low"
+            },
+            {
+              "id": "fast",
+              "value": "true"
+            }
+          ],
+          "displayName": "Cursor Grok 4.5"
+        },
+        {
+          "params": [
+            {
+              "id": "effort",
+              "value": "medium"
+            },
+            {
+              "id": "fast",
+              "value": "false"
+            }
+          ],
+          "displayName": "Cursor Grok 4.5"
+        },
+        {
+          "params": [
+            {
+              "id": "effort",
+              "value": "medium"
+            },
+            {
+              "id": "fast",
+              "value": "true"
+            }
+          ],
+          "displayName": "Cursor Grok 4.5"
+        },
+        {
+          "params": [
+            {
+              "id": "effort",
+              "value": "high"
+            },
+            {
+              "id": "fast",
+              "value": "false"
+            }
+          ],
+          "displayName": "Cursor Grok 4.5"
+        },
+        {
+          "params": [
+            {
+              "id": "effort",
+              "value": "high"
+            },
+            {
+              "id": "fast",
+              "value": "true"
+            }
+          ],
+          "displayName": "Cursor Grok 4.5",
+          "isDefault": true
         }
       ]
     },

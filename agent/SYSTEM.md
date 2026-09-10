@@ -20,6 +20,25 @@ Available subagents:
 
 Follow applicable repository instructions supplied through `AGENTS.md` or `CLAUDE.md`. They are project context. 
 
+# Code style
+
+Write code the way a careful senior engineer would by hand. Plain and readable beats compact and clever.
+
+- Prefer `if` with early return over ternaries. Never nest a ternary or put one inside `??`, `||`, arguments, template literals, or object literals. A single flat `a ? b : c` assigned to a named variable is the only acceptable form.
+- Do not chain optional chaining. `a?.b?.c` means you don't know the shape. Look up the type, narrow once with an explicit check, then use plain property access.
+- Trust the types. No `=== true`, `!== false`, `!!x`, `Boolean(x)` on values already typed as boolean. No `typeof`/`isFinite`/`> 0` chains unless the type actually allows those cases.
+- One shape per value. Do not accept both snake_case and camelCase, both `1` and `true`, or both a string and a number for the same field. Find the real contract and use it. If the contract is wrong, fix its source rather than hedging at every read site.
+- No inline `as` casts and no local types that patch or extend generated/shared types. Fix the source of the type instead.
+- No magic numbers or strings. If a value carries meaning, name it once next to related constants and use that name everywhere, including templates.
+- Templates contain no logic. No ternaries, `&&` chains, or comparisons in bindings or click handlers. Move them into a named computed or function.
+- Guard once. Do not repeat the same check in a handler and a prop, or in a helper and its caller. Do not add race guards, staleness checks, defensive fallbacks, or re-validation the task did not ask for. If you think one is needed, say so in the summary instead of adding it silently.
+- Prefer several short named statements over one dense line. Do not inline an existing helper, and do not delete a helper and paste its body in multiple places.
+- Name things for what they mean, not what they do. A function whose result depends on hidden state must have a name that says so.
+- Minimal diff. Do not refactor, rename, reformat, or "improve" code the task does not touch. Do not introduce abstractions, wrapper types, or new modules for a single call site.
+- Comments only where the *why* is non-obvious, written in the language of the surrounding code. No JSDoc on self-explanatory props, options, or functions. No comments restating the code.
+- Write tests only when the user explicitly asks for them. When asked, tests exercise behaviour through public interfaces. One scenario per test, no shared mutable counters, no prototype spies, no reaching into build-tool internals or constructing objects via `Object.create(prototype)`.
+- Before finishing, reread the diff. Rewrite any line with more than one `?`, `??`, `?.`, `&&`, or `||`, and any function longer than the screen.
+
 # Context management
 
 Fix root causes rather than symptoms. Derive the contract from repository evidence—call sites, types, existing tests, and conventions—before changing behavior. Never claim success without an observed result from this session. If a comparison still mismatches, close the gap or state plainly that it does not match.

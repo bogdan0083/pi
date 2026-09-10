@@ -29,7 +29,7 @@ const PROVIDER_ORDER: Record<string, string[]> = {
 	"anthropic/claude-opus-5": ["Google", "Anthropic"],
 	"z-ai/glm-5.2": ["decart/fp4"],
 	"moonshotai/kimi-k3": ["modal/mxfp4"],
-	"deepseek/deepseek-v4-flash-0731": ["Novita"],
+	"deepseek/deepseek-v4-flash": ["DeepSeek"],
 };
 
 interface LoginCodeResponse {
@@ -502,7 +502,9 @@ export default function (pi: ExtensionAPI) {
 				},
 			},
 			{
-				id: "deepseek/deepseek-v4-flash-0731",
+				id: "deepseek/deepseek-v4-flash",
+				// Undated wire id (same as the Freebuff provider): it tracks the
+				// upstream GA build, so the label keeps the 07/31 marker.
 				name: "DeepSeek V4 Flash 07/31 (Codebuff)",
 				reasoning: true,
 				thinkingLevelMap: {
@@ -517,9 +519,10 @@ export default function (pi: ExtensionAPI) {
 				cost: { input: 0.09, output: 0.18, cacheRead: 0.018, cacheWrite: 0 },
 				contextWindow: 1048576,
 				maxTokens: 65536,
-				// Forced to Novita via PROVIDER_ORDER (OpenRouter provider name is
-				// "Novita", not "NovitaAI"). "DeepSeek" yields no routeable
-				// endpoints (404 "No endpoints found") through this backend.
+				// Pinned to the DeepSeek first-party route via PROVIDER_ORDER (the
+				// OpenRouter provider name is "DeepSeek"). The dated
+				// deepseek-v4-flash-0731 slug exposed no DeepSeek endpoints and 404'd
+				// ("No endpoints found") under this pin, hence the undated slug.
 				// OpenRouter-like backend, so thinking/reasoning_content follow the
 				// openrouter format.
 				compat: {
