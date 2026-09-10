@@ -17,9 +17,9 @@
   ],
   "subagents": {
     "models": {
-      "explore": "codebuff/deepseek/deepseek-v4-flash:high",
-      "general-purpose": "codebuff/deepseek/deepseek-v4-flash:xhigh",
-      "web-search": "codebuff/deepseek/deepseek-v4-flash:medium"
+      "explore": "deepseek/deepseek-v4-flash:high",
+      "general-purpose": "deepseek/deepseek-v4-flash:xhigh",
+      "web-search": "opencode/muse-spark-1.3-contributor-free:medium"
     }
   },
   "hideThinkingBlock": true,
