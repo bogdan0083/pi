@@ -70,35 +70,7 @@
             "max": "max"
           }
         }
-      ],
-      "modelOverrides": {
-        "deepseek-v4-flash": {
-          "input": [
-            "text",
-            "image"
-          ]
-        }
-      }
-    },
-    "codebuff": {
-      "modelOverrides": {
-        "deepseek/deepseek-v4-flash": {
-          "input": [
-            "text",
-            "image"
-          ]
-        }
-      }
-    },
-    "freebuff": {
-      "modelOverrides": {
-        "deepseek/deepseek-v4-flash": {
-          "input": [
-            "text",
-            "image"
-          ]
-        }
-      }
+      ]
     }
   }
 }
