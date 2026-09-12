@@ -19,7 +19,8 @@
     "models": {
       "explore": "codebuff/deepseek/deepseek-v4-flash:high",
       "general-purpose": "codebuff/deepseek/deepseek-v4-flash:xhigh",
-      "web-search": "codebuff/deepseek/deepseek-v4-flash:medium"
+      "web-search": "codebuff/deepseek/deepseek-v4-flash:medium",
+      "thermonuclear-review": "codebuff/deepseek/deepseek-v4-flash:xhigh"
     }
   },
   "hideThinkingBlock": true,
