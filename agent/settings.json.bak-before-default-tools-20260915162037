@@ -10,20 +10,12 @@
     "npm:pi-cursor-sdk",
     "npm:pi-fff"
   ],
-  "defaultTools": [
-    "read",
-    "bash",
-    "edit",
-    "write",
-    "grep",
-    "find"
-  ],
   "subagents": {
     "models": {
-      "explore": "openai-codex/gpt-6-astra:low",
-      "general-purpose": "openai-codex/gpt-6-astra:low",
-      "web-search": "openai-codex/gpt-6-astra:low",
-      "thermonuclear-review": "openai-codex/gpt-6-astra:low"
+      "explore": "codebuff/deepseek/deepseek-v4-flash:high",
+      "general-purpose": "codebuff/deepseek/deepseek-v4-flash:xhigh",
+      "web-search": "codebuff/deepseek/deepseek-v4-flash:medium",
+      "thermonuclear-review": "codebuff/deepseek/deepseek-v4-flash:xhigh"
     }
   },
   "hideThinkingBlock": true,

@@ -3,6 +3,8 @@
   "packages": [
     "extensions/read-directories.ts",
     "extensions/read-image.ts",
+    "extensions/disable-search-tools.ts",
+    "extensions/disable-file-tools.ts",
     "extensions/codebuff-provider.ts",
     "extensions/freebuff-provider.ts",
     "extensions/pi-codex-compact/index.ts",
@@ -10,20 +12,12 @@
     "npm:pi-cursor-sdk",
     "npm:pi-fff"
   ],
-  "defaultTools": [
-    "read",
-    "bash",
-    "edit",
-    "write",
-    "grep",
-    "find"
-  ],
   "subagents": {
     "models": {
-      "explore": "openai-codex/gpt-6-astra:low",
-      "general-purpose": "openai-codex/gpt-6-astra:low",
-      "web-search": "openai-codex/gpt-6-astra:low",
-      "thermonuclear-review": "openai-codex/gpt-6-astra:low"
+      "explore": "codebuff/deepseek/deepseek-v4-flash:high",
+      "general-purpose": "codebuff/deepseek/deepseek-v4-flash:xhigh",
+      "web-search": "codebuff/deepseek/deepseek-v4-flash:medium",
+      "thermonuclear-review": "codebuff/deepseek/deepseek-v4-flash:xhigh"
     }
   },
   "hideThinkingBlock": true,
