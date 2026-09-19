@@ -14,9 +14,7 @@
     "read",
     "bash",
     "edit",
-    "write",
-    "grep",
-    "find"
+    "write"
   ],
   "subagents": {
     "models": {

@@ -1,0 +1,1 @@
+Prefer `rg` (ripgrep) for content search and `fd` for finding files over bash `grep`/`find`: both are faster, honour `.gitignore`, and skip hidden files by default (add `--no-ignore`/`-u` or `-H`/`-I` when you need ignored or hidden files).
